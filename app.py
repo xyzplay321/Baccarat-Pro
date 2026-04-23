@@ -16,9 +16,8 @@ class BaccaratPro:
         self.big_road = []    
         self.is_blind_mode = False 
         self.last_action_text = "等待開局..."
-        self.stats = {'math': {'W': 0, 'L': 0}, 'road': {'W': 0, 'L': 0}}
+        self.session_streak = 0 
         self.current_advice = {'math': None, 'road': None}
-        self.session_streak = 0 # 新增：目前連勝負狀態
 
     def _add_to_big_road(self, res):
         if res not in ['B', 'P']: return
@@ -29,76 +28,87 @@ class BaccaratPro:
 
     def _simulate_derived_road(self, board, k, guess):
         temp_br = [col[:] for col in board]
-        if not temp_br or temp_br[-1][0] != guess:
-            temp_br.append([guess])
-        else:
-            temp_br[-1].append(guess)
+        if not temp_br or temp_br[-1][0] != guess: temp_br.append([guess])
+        else: temp_br[-1].append(guess)
         C = len(temp_br) - 1 
         if C <= k: return None 
         R = len(temp_br[C]) - 1 
-        if R > 0: 
-            col_compare = temp_br[C - k]
-            return len(col_compare) >= R
-        else:     
-            return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
+        if R > 0: return len(temp_br[C-k]) >= R
+        else: return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
 
-    def get_road_status(self):
-        """計算下三路穩定度"""
-        roads = {'大眼仔': 1, '小路': 2, '蟑螂路': 3}
-        status_list = []
-        votes = {'B': 0, 'P': 0}
+    def detect_all_patterns(self):
+        """核心：全圖形掃描器"""
+        if len(self.big_road) < 4: return None, 0
         
-        for name, k in roads.items():
-            b_red = self._simulate_derived_road(self.big_road, k, 'B')
-            p_red = self._simulate_derived_road(self.big_road, k, 'P')
-            
-            if b_red is None:
-                status_list.append(f"{name}: ⏳")
-                continue
-            
-            # 判斷目前最後一手的穩定度
-            last_res = self.raw_road[-1] if self.raw_road else None
-            temp_br = [col[:] for col in self.big_road]
-            # 簡單判定：紅筆為平穩，藍筆為波動
-            is_stable = self._simulate_derived_road(temp_br[:-1], k, last_res) if len(temp_br)>1 else True
-            emoji = "✅" if is_stable else "⚠️"
-            status_list.append(f"{name}: {emoji}")
-            
-            if b_red: votes['B'] += 1
-            if p_red: votes['P'] += 1
-            
-        return " | ".join(status_list), votes
+        lens = [len(col) for col in self.big_road[-6:]]
+        cur_side = self.big_road[-1][0]
+        opp_side = 'P' if cur_side == 'B' else 'B'
+        
+        # 1. 長龍 (Dragon)
+        if lens[-1] >= 4: return cur_side, 15  # 權重 +15%
+        
+        # 2. 單跳 (Single Jump)
+        if all(l == 1 for l in lens[-4:]): return opp_side, 12 # 權重 +12%
+        
+        # 3. 雙跳 (Double Jump)
+        if lens[-4:] == [2, 2, 2, 1]: return cur_side, 10
+        if lens[-4:] == [2, 2, 2, 2]: return opp_side, 10
 
-    def _update_session_streak(self, res):
-        """更新目前的連續勝負"""
-        if res == 'T': return # 和局不計
+        # 4. 一廳兩房 (1-2-1-2)
+        if lens[-4:] == [1, 2, 1, 1]: return cur_side, 8
+        if lens[-4:] == [2, 1, 2, 1]: return opp_side, 8
+
+        # 5. 逢莊/閒跳 (Always Jump)
+        history_lens = [len(col) for col in self.big_road if col[0] == opp_side]
+        if len(history_lens) >= 3 and all(l == 1 for l in history_lens):
+            if lens[-1] == 1 and cur_side == opp_side: return 'B' if opp_side == 'P' else 'P', 12
+
+        return None, 0
+
+    def calculate_final_prob(self, math_shift, road_votes):
+        """引擎綜合計算每局百分比"""
+        # 基礎機率 (莊家先天微弱優勢)
+        b_prob = 50.68
+        p_prob = 49.32
         
-        # 這裡以「路單引擎」的建議作為對獎基準 (因為路單最常有動作)
-        advice = self.current_advice['road']
-        if advice:
-            if advice == res:
-                self.session_streak = self.session_streak + 1 if self.session_streak >= 0 else 1
-            else:
-                self.session_streak = self.session_streak - 1 if self.session_streak <= 0 else -1
+        # 1. 數學偏移影響 (1% shift 約影響 1% 機率)
+        b_prob += math_shift * 5 # 放大敏感度
+        p_prob -= math_shift * 5
+        
+        # 2. 路單共振影響 (每多一張紅筆票 +3%)
+        net_votes = road_votes['B'] - road_votes['P']
+        b_prob += net_votes * 3
+        p_prob -= net_votes * 3
+        
+        # 3. 圖形識別加成
+        pat_side, pat_weight = self.detect_all_patterns()
+        if pat_side == 'B': b_prob += pat_weight
+        elif pat_side == 'P': p_prob += pat_weight
+        
+        # 標準化歸一 (確保兩者相加為 100)
+        total = b_prob + p_prob
+        return round((b_prob / total) * 100, 1), round((p_prob / total) * 100, 1)
 
     def process_exact_cards(self, cards_str):
         vals = [int(d) for d in cards_str]
+        # 補牌判斷邏輯... (省略重複程式碼，保持與前版一致)
         if len(vals) == 4: p_cards, b_cards = vals[:2], vals[2:]
         elif len(vals) == 6: p_cards, b_cards = vals[:3], vals[3:]
         elif len(vals) == 5:
             if (vals[0]+vals[1])%10 <= 5: p_cards, b_cards = vals[:3], vals[3:]
             else: p_cards, b_cards = vals[:2], vals[2:]
         else: return False
-            
         p_s, b_s = sum(p_cards)%10, sum(b_cards)%10
         res = 'P' if p_s > b_s else 'B' if b_s > p_s else 'T'
         
-        self._update_session_streak(res)
+        if res != 'T' and self.current_advice['road']:
+            if self.current_advice['road'] == res: self.session_streak = self.session_streak + 1 if self.session_streak >= 0 else 1
+            else: self.session_streak = self.session_streak - 1 if self.session_streak <= 0 else -1
+                
         backup_counts = self.counts[:]
         for d in cards_str:
             if self.counts[int(d)] > 0: self.counts[int(d)] -= 1
             self.total_cards -= 1
-                
         self.history.append(('EXACT', cards_str, res, backup_counts, self.is_blind_mode, self.session_streak))
         self.raw_road.append(res); self._add_to_big_road(res)
         self.round_num += 1; self.is_blind_mode = False
@@ -107,7 +117,9 @@ class BaccaratPro:
 
     def process_blind_shortcut(self, cmd):
         res = cmd.upper()
-        self._update_session_streak(res)
+        if res != 'T' and self.current_advice['road']:
+            if self.current_advice['road'] == res: self.session_streak = self.session_streak + 1 if self.session_streak >= 0 else 1
+            else: self.session_streak = self.session_streak - 1 if self.session_streak <= 0 else -1
         self.history.append(('BLIND', res, res, self.counts[:], self.is_blind_mode, self.session_streak))
         self.raw_road.append(res); self._add_to_big_road(res)
         self.round_num += 1; self.is_blind_mode = True
@@ -118,11 +130,9 @@ class BaccaratPro:
         if not self.history: return False
         h = self.history.pop()
         self.counts, self.is_blind_mode, self.session_streak = h[3], h[4], h[5]
-        self.raw_road.pop()
-        self.big_road = []
+        self.raw_road.pop(); self.big_road = []
         for r in self.raw_road: self._add_to_big_road(r)
-        self.round_num -= 1
-        return True
+        self.round_num -= 1; return True
 
 game = BaccaratPro(8)
 
@@ -144,17 +154,32 @@ def handle_command():
         if shift > 0.15: math_side = 'B'
         elif shift < -0.15: math_side = 'P'
         
-    road_status_text, votes = game.get_road_status()
-    if votes['B'] > votes['P']: road_side = 'B'
-    elif votes['P'] > votes['B']: road_side = 'P'
-
-    game.current_advice = {'math': math_side, 'road': road_side}
+    # 下三路計算與穩定度
+    roads_config = {'大眼仔': 1, '小路': 2, '蟑螂路': 3}
+    votes = {'B': 0, 'P': 0}
+    stability_icons = []
+    for name, k in roads_config.items():
+        b_red = game._simulate_derived_road(game.big_road, k, 'B')
+        p_red = game._simulate_derived_road(game.big_road, k, 'P')
+        if b_red is True: votes['B'] += 1
+        if p_red is True: votes['P'] += 1
+        
+        # 簡單判定最後一手的路向是否符合紅筆規律
+        if game.raw_road:
+            is_stable = game._simulate_derived_road(game.big_road[:-1], k, game.raw_road[-1])
+            stability_icons.append(f"{name}{'✅' if is_stable else '⚠️'}")
     
-    # 組合建議文字
+    road_side = 'B' if votes['B'] > votes['P'] else 'P' if votes['P'] > votes['B'] else None
+    game.current_advice = {'math': math_side, 'road': road_side}
+
+    # 綜合百分比計算
+    b_pct, p_pct = game.calculate_final_prob(shift, votes)
+    
     advice = "⚪ 建議觀望"
-    if math_side == road_side and math_side: advice = f"🔥 重注【{'莊' if math_side=='B' else '閒'}】"
-    elif math_side: advice = f"💡 數學【{'莊' if math_side=='B' else '閒'}】"
-    elif road_side: advice = f"👉 路單【{'莊' if road_side=='B' else '閒'}】"
+    if b_pct >= 60: advice = f"🔥 強力推【莊】"
+    elif p_pct >= 60: advice = f"🔥 強力推【閒】"
+    elif b_pct > p_pct: advice = f"👉 傾向【莊】"
+    else: advice = f"👉 傾向【閒】"
 
     streak_text = f"🔥 {game.session_streak} 連勝" if game.session_streak > 0 else f"🧊 {abs(game.session_streak)} 連敗" if game.session_streak < 0 else "---"
 
@@ -162,7 +187,9 @@ def handle_command():
         "round": game.round_num,
         "streak": streak_text,
         "advice": advice,
-        "stability": road_status_text,
+        "b_prob": f"{b_pct}%",
+        "p_prob": f"{p_pct}%",
+        "stability": " | ".join(stability_icons) if stability_icons else "等待成路",
         "last_action": game.last_action_text
     })
 
