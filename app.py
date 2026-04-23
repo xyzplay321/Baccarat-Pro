@@ -18,6 +18,7 @@ class BaccaratPro:
         self.last_action_text = "等待開局..."
         self.session_streak = 0 
         self.current_advice = {'math': None, 'road': None}
+        self.current_pattern_text = "🔍 數據不足，掃描中..."
 
     def _add_to_big_road(self, res):
         if res not in ['B', 'P']: return
@@ -37,61 +38,51 @@ class BaccaratPro:
         else: return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
 
     def detect_all_patterns(self):
-        """核心：全圖形掃描器"""
-        if len(self.big_road) < 4: return None, 0
+        """核心：全圖形掃描器 (新增回傳圖形名稱)"""
+        if len(self.big_road) < 4: return None, 0, "🔍 數據不足，掃描中..."
         
         lens = [len(col) for col in self.big_road[-6:]]
         cur_side = self.big_road[-1][0]
         opp_side = 'P' if cur_side == 'B' else 'B'
+        side_tw = {'B': '莊', 'P': '閒'}
         
-        # 1. 長龍 (Dragon)
-        if lens[-1] >= 4: return cur_side, 15  # 權重 +15%
-        
-        # 2. 單跳 (Single Jump)
-        if all(l == 1 for l in lens[-4:]): return opp_side, 12 # 權重 +12%
-        
-        # 3. 雙跳 (Double Jump)
-        if lens[-4:] == [2, 2, 2, 1]: return cur_side, 10
-        if lens[-4:] == [2, 2, 2, 2]: return opp_side, 10
+        if lens[-1] >= 4: return cur_side, 15, f"🐉 {side_tw[cur_side]}長龍 (連 {lens[-1]} 顆)"
+        if all(l == 1 for l in lens[-4:]): return opp_side, 12, "⚡ 標準單跳路"
+        if lens[-4:] == [2, 2, 2, 1]: return cur_side, 10, "✌️ 雙跳路 (準備補齊)"
+        if lens[-4:] == [2, 2, 2, 2]: return opp_side, 10, "✌️ 雙跳路 (準備換邊)"
+        if lens[-4:] == [1, 2, 1, 1]: return cur_side, 8, "🏠 一廳兩房 (準備補齊)"
+        if lens[-4:] == [2, 1, 2, 1]: return opp_side, 8, "🏠 一廳兩房 (準備換邊)"
 
-        # 4. 一廳兩房 (1-2-1-2)
-        if lens[-4:] == [1, 2, 1, 1]: return cur_side, 8
-        if lens[-4:] == [2, 1, 2, 1]: return opp_side, 8
-
-        # 5. 逢莊/閒跳 (Always Jump)
         history_lens = [len(col) for col in self.big_road if col[0] == opp_side]
         if len(history_lens) >= 3 and all(l == 1 for l in history_lens):
-            if lens[-1] == 1 and cur_side == opp_side: return 'B' if opp_side == 'P' else 'P', 12
+            if lens[-1] == 1 and cur_side == opp_side: 
+                return ('B' if opp_side == 'P' else 'P'), 12, f"🪃 逢{side_tw[opp_side]}必跳"
 
-        return None, 0
+        return None, 0, "⚪ 目前無特殊圖形"
 
     def calculate_final_prob(self, math_shift, road_votes):
         """引擎綜合計算每局百分比"""
-        # 基礎機率 (莊家先天微弱優勢)
         b_prob = 50.68
         p_prob = 49.32
         
-        # 1. 數學偏移影響 (1% shift 約影響 1% 機率)
-        b_prob += math_shift * 5 # 放大敏感度
+        b_prob += math_shift * 5
         p_prob -= math_shift * 5
         
-        # 2. 路單共振影響 (每多一張紅筆票 +3%)
         net_votes = road_votes['B'] - road_votes['P']
         b_prob += net_votes * 3
         p_prob -= net_votes * 3
         
-        # 3. 圖形識別加成
-        pat_side, pat_weight = self.detect_all_patterns()
+        pat_side, pat_weight, pat_name = self.detect_all_patterns()
+        self.current_pattern_text = pat_name # 儲存圖形名稱給前端
+        
         if pat_side == 'B': b_prob += pat_weight
         elif pat_side == 'P': p_prob += pat_weight
         
-        # 標準化歸一 (確保兩者相加為 100)
         total = b_prob + p_prob
         return round((b_prob / total) * 100, 1), round((p_prob / total) * 100, 1)
 
     def process_exact_cards(self, cards_str):
         vals = [int(d) for d in cards_str]
-        # 補牌判斷邏輯... (省略重複程式碼，保持與前版一致)
         if len(vals) == 4: p_cards, b_cards = vals[:2], vals[2:]
         elif len(vals) == 6: p_cards, b_cards = vals[:3], vals[3:]
         elif len(vals) == 5:
@@ -154,7 +145,6 @@ def handle_command():
         if shift > 0.15: math_side = 'B'
         elif shift < -0.15: math_side = 'P'
         
-    # 下三路計算與穩定度
     roads_config = {'大眼仔': 1, '小路': 2, '蟑螂路': 3}
     votes = {'B': 0, 'P': 0}
     stability_icons = []
@@ -164,7 +154,6 @@ def handle_command():
         if b_red is True: votes['B'] += 1
         if p_red is True: votes['P'] += 1
         
-        # 簡單判定最後一手的路向是否符合紅筆規律
         if game.raw_road:
             is_stable = game._simulate_derived_road(game.big_road[:-1], k, game.raw_road[-1])
             stability_icons.append(f"{name}{'✅' if is_stable else '⚠️'}")
@@ -172,7 +161,6 @@ def handle_command():
     road_side = 'B' if votes['B'] > votes['P'] else 'P' if votes['P'] > votes['B'] else None
     game.current_advice = {'math': math_side, 'road': road_side}
 
-    # 綜合百分比計算
     b_pct, p_pct = game.calculate_final_prob(shift, votes)
     
     advice = "⚪ 建議觀望"
@@ -189,6 +177,7 @@ def handle_command():
         "advice": advice,
         "b_prob": f"{b_pct}%",
         "p_prob": f"{p_pct}%",
+        "pattern": game.current_pattern_text,
         "stability": " | ".join(stability_icons) if stability_icons else "等待成路",
         "last_action": game.last_action_text
     })
