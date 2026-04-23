@@ -3,46 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Baccarat AI Engine</title>
+    <title>百家樂極致靈活版</title>
     <style>
         body { background: #050505; color: #fff; font-family: sans-serif; margin: 0; padding: 10px; }
-        .header { display: flex; justify-content: space-between; padding: 10px; background: #111; border-radius: 8px; margin-bottom: 8px; border-bottom: 2px solid #333; }
-        .card { background: #121212; border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
-        .prob-container { display: flex; height: 30px; background: #222; border-radius: 15px; overflow: hidden; margin: 10px 0; border: 1px solid #444; }
-        #b-bar { background: linear-gradient(90deg, #ff4b2b, #ff416c); width: 50%; transition: 0.5s; text-align: right; padding-right: 10px; line-height: 30px; font-weight: bold; }
-        #p-bar { background: linear-gradient(90deg, #12c2e9, #c471ed); width: 50%; transition: 0.5s; text-align: left; padding-left: 10px; line-height: 30px; font-weight: bold; }
-        .advice-main { font-size: 26px; text-align: center; font-weight: bold; margin: 10px 0; color: #ffd700; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .btn { border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .btn-num { background: #222; font-size: 20px; padding: 15px; border: 1px solid #333; }
-        .btn-action { background: #f39c12; font-size: 18px; }
-        .shortcut-group { display: flex; gap: 6px; margin-top: 8px; }
-        .btn-p { background: #007bff; flex: 1; padding: 18px; font-size: 20px; }
-        .btn-t { background: #28a745; flex: 0.5; padding: 18px; font-size: 20px; }
-        .btn-b { background: #dc3545; flex: 1; padding: 18px; font-size: 20px; }
-        .display { background: #000; color: #00ff00; font-family: monospace; font-size: 32px; text-align: center; padding: 8px; border-radius: 6px; margin-bottom: 8px; letter-spacing: 5px; min-height: 40px; }
-        .label { font-size: 11px; color: #666; margin-bottom: 4px; text-transform: uppercase; }
+        .status-bar { display: flex; justify-content: space-between; padding: 12px; background: #111; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #f39c12; font-weight: bold;}
+        .card { background: #121212; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+        
+        /* 機率數字展示區 */
+        .prob-box { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; padding: 10px; background: #0a0a0a; border-radius: 8px; border: 1px solid #333;}
+        .prob-number { font-size: 38px; font-weight: 900; font-family: monospace; letter-spacing: -1px;}
+        .prob-b { color: #ff3e3e; text-shadow: 0 0 10px rgba(255,62,62,0.4); }
+        .prob-p { color: #12c2e9; text-shadow: 0 0 10px rgba(18,194,233,0.4); }
+        
+        .pattern-text { text-align: center; font-size: 20px; font-weight: bold; color: #ffd700; margin-bottom: 15px; text-shadow: 0 0 8px rgba(255,215,0,0.3); }
+        .advice-main { font-size: 26px; text-align: center; font-weight: bold; margin: 10px 0; }
+        .stability-text { font-size: 13px; text-align: center; color: #888; border-top: 1px solid #222; padding-top: 10px; margin-top: 10px;}
+        
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .btn { border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; transition: 0.1s;}
+        .btn:active { transform: scale(0.95); }
+        .btn-num { background: #222; font-size: 22px; padding: 18px; border: 1px solid #333; }
+        .btn-action { background: #f39c12; font-size: 20px; }
+        
+        .shortcut-group { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-p-short { background: #007bff; flex: 1; padding: 20px; font-size: 22px; }
+        .btn-t-short { background: #28a745; flex: 0.6; padding: 20px; font-size: 20px; }
+        .btn-b-short { background: #dc3545; flex: 1; padding: 20px; font-size: 22px; }
+        
+        .display { background: #000; color: #00ff00; font-family: monospace; font-size: 32px; text-align: center; padding: 10px; border-radius: 6px; margin-bottom: 10px; letter-spacing: 6px; height: 38px; line-height: 38px;}
+        .label { font-size: 13px; color: #777; margin-bottom: 8px; font-weight: bold;}
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div style="color: #f39c12;">Round <span id="round">1</span></div>
+    <div class="status-bar">
+        <div>🤖 極致靈活版 | 第 <span id="round" style="color: #f39c12; font-size: 18px;">1</span> 局</div>
         <div id="streak">---</div>
     </div>
 
     <div class="card">
-        <div class="label">📊 綜合引擎機率預測 (莊 vs 閒)</div>
-        <div class="prob-container">
-            <div id="b-bar">50.7%</div>
-            <div id="p-bar">49.3%</div>
+        <div class="label">👁️ 實時圖形識別</div>
+        <div id="pattern" class="pattern-text">🔍 數據不足，掃描中...</div>
+        
+        <div class="label">📊 綜合機率計算 (數學+路單+圖形)</div>
+        <div class="prob-box">
+            <div style="text-align: center;">
+                <div style="color: #ff3e3e; font-size: 14px; margin-bottom: 5px;">莊家 (Banker)</div>
+                <div id="b_prob" class="prob-number prob-b">50.7%</div>
+            </div>
+            <div style="font-size: 20px; color: #555;">VS</div>
+            <div style="text-align: center;">
+                <div style="color: #12c2e9; font-size: 14px; margin-bottom: 5px;">閒家 (Player)</div>
+                <div id="p_prob" class="prob-number prob-p">49.3%</div>
+            </div>
         </div>
-        <div id="advice" class="advice-main">等待輸入數據...</div>
-        <div id="stability" style="font-size: 12px; text-align: center; color: #888; border-top: 1px solid #222; padding-top: 8px;">訊號穩定度：⏳</div>
+
+        <div id="advice" class="advice-main" style="color: #00ff88;">等待輸入數據...</div>
+        <div id="stability" class="stability-text">下三路訊號：⏳ 等待成路</div>
     </div>
 
     <div class="card">
-        <div class="label">🔢 精算牌面點數</div>
+        <div class="label">🔢 精算牌面點數 (4-6位數字)</div>
         <div id="num-display" class="display">____</div>
         <div class="numpad">
             <button class="btn btn-num" onclick="p(1)">1</button>
@@ -63,13 +84,13 @@
     <div class="card">
         <div class="label">⚡ 快捷結果錄入</div>
         <div class="shortcut-group">
-            <button class="btn btn-p" onclick="s('P')">閒</button>
-            <button class="btn btn-t" onclick="s('T')">和</button>
-            <button class="btn btn-b" onclick="s('B')">莊</button>
+            <button class="btn btn-p-short" onclick="s('P')">閒</button>
+            <button class="btn btn-t-short" onclick="s('T')">和</button>
+            <button class="btn btn-b-short" onclick="s('B')">莊</button>
         </div>
-        <div style="display: flex; gap: 6px; margin-top: 8px;">
-            <button class="btn" style="background:#222; flex:1; padding:8px; font-size:12px;" onclick="s('U')">悔棋</button>
-            <button class="btn" style="background:#222; flex:1; padding:8px; font-size:12px;" onclick="s('R')">重置</button>
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="btn" style="background:#2a2a2a; flex:1; padding:12px; font-size:14px;" onclick="s('U')">⏪ 悔棋</button>
+            <button class="btn" style="background:#2a2a2a; flex:1; padding:12px; font-size:14px;" onclick="s('R')">🔄 重置牌靴</button>
         </div>
     </div>
 
@@ -78,7 +99,7 @@
         function p(n) { if(val.length<6) val+=n; update(); }
         function c() { val=""; update(); }
         function update() { document.getElementById('num-display').innerText = val || "____"; }
-        function ok() { if(val.length>=4){ s(val); c(); } }
+        function ok() { if(val.length>=4){ s(val); c(); } else { alert("點數輸入不足"); } }
 
         function s(cmd) {
             fetch('/api/cmd', {
@@ -89,12 +110,18 @@
                 document.getElementById('round').innerText = d.round;
                 document.getElementById('streak').innerText = d.streak;
                 document.getElementById('advice').innerText = d.advice;
-                document.getElementById('stability').innerText = "訊號穩定度：" + d.stability;
+                document.getElementById('pattern').innerText = d.pattern;
+                document.getElementById('stability').innerText = "下三路訊號：" + d.stability;
                 
-                document.getElementById('b-bar').style.width = d.b_prob;
-                document.getElementById('b-bar').innerText = d.b_prob;
-                document.getElementById('p-bar').style.width = d.p_prob;
-                document.getElementById('p-bar').innerText = d.p_prob;
+                // 更新巨大數字
+                document.getElementById('b_prob').innerText = d.b_prob;
+                document.getElementById('p_prob').innerText = d.p_prob;
+
+                // 動態調整決策文字顏色
+                const advBox = document.getElementById('advice');
+                if(d.advice.includes("🔥")) advBox.style.color = "#ff3e3e";
+                else if(d.advice.includes("👉")) advBox.style.color = "#12c2e9";
+                else advBox.style.color = "#00ff88";
             });
         }
     </script>
