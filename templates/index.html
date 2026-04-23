@@ -1,109 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>百家樂雙引擎決策系統</title>
+    <title>Baccarat Master UI</title>
     <style>
-        body { background-color: #121212; color: #ffffff; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; text-align: center; }
-        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: left; }
-        h2, h3, p { margin: 5px 0; }
-        .highlight { color: #f39c12; font-weight: bold; }
-        .btn-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
-        button { flex: 1; padding: 15px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; }
-        button:active { opacity: 0.7; transform: scale(0.98); }
-        .btn-b { background-color: #d32f2f; } 
-        .btn-p { background-color: #1976d2; } 
-        .btn-t { background-color: #388e3c; } 
-        .btn-sys { background-color: #555; font-size: 16px;} 
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
-        .num-btn { background: #333; padding: 15px; font-size: 22px; border-radius: 8px; color: white; border: none;}
+        body { background: #0a0a0a; color: #e0e0e0; font-family: sans-serif; margin: 0; padding: 10px; }
+        .status-bar { display: flex; justify-content: space-between; padding: 10px; background: #1a1a1a; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #f39c12; }
+        .card { background: #161616; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .advice-box { text-align: center; font-size: 24px; font-weight: bold; color: #00ff88; margin: 10px 0; text-shadow: 0 0 10px rgba(0,255,136,0.3); }
+        .stability-text { font-size: 14px; color: #aaa; text-align: center; border-top: 1px solid #333; pt: 10px; margin-top: 10px; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .btn { border: none; border-radius: 8px; color: white; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.1s; }
+        .btn:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-num { background: #2c2c2c; padding: 18px; }
+        .btn-send { background: #f39c12; grid-column: span 1; }
+        .btn-clear { background: #444; }
+        .shortcut-group { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-p { background: #1976d2; flex: 1; padding: 20px; }
+        .btn-t { background: #388e3c; flex: 0.6; padding: 20px; }
+        .btn-b { background: #d32f2f; flex: 1; padding: 20px; }
+        .display-area { background: #000; color: #00ff88; font-family: monospace; font-size: 28px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 10px; letter-spacing: 4px; height: 35px; line-height: 35px; }
+        .info-label { font-size: 12px; color: #666; margin-bottom: 5px; }
     </style>
 </head>
 <body>
-    <h2>🤖 全自動打牌輔助系統</h2>
-    
-    <div class="card">
-        <p>【 第 <span id="round" class="highlight">1</span> 局 】 | 💰 本金: <span id="cap" class="highlight">10000</span></p>
-        <hr style="border-color: #333;">
-        <p>🎯 系統策略: <span id="bet_advice" style="color:#00e676;">等待開局...</span></p>
-        <p>🏆 引擎戰績: <span id="stats">無紀錄</span></p>
+
+    <div class="status-bar">
+        <div>第 <span id="round" style="color:#f39c12; font-size: 20px;">1</span> 局</div>
+        <div id="streak" style="font-weight: bold;">---</div>
     </div>
 
     <div class="card">
-        <h3 style="text-align: center;">⚡ 盲打快捷進場區</h3>
-        <div class="btn-group">
-            <button class="btn-p" onclick="sendCmd('P')">🔵 閒贏</button>
-            <button class="btn-t" onclick="sendCmd('T')">⚪ 和局</button>
-            <button class="btn-b" onclick="sendCmd('B')">🔴 莊贏</button>
-        </div>
+        <div class="info-label">🎯 當前決策建議</div>
+        <div id="advice" class="advice-box">等待數據...</div>
+        <div id="stability" class="stability-text">下三路訊號：⏳ 等待成路</div>
     </div>
 
     <div class="card">
-        <h3 style="text-align: center;">🔢 精算點數輸入</h3>
-        <h2 id="input-display" style="letter-spacing: 5px; color: #aaa; text-align: center; background: #000; padding: 10px; border-radius: 8px;">_</h2>
+        <div class="info-label">🔢 精算點數輸入 (4-6位)</div>
+        <div id="num-display" class="display-area">____</div>
         <div class="numpad">
-            <button class="num-btn" onclick="typeNum(1)">1</button>
-            <button class="num-btn" onclick="typeNum(2)">2</button>
-            <button class="num-btn" onclick="typeNum(3)">3</button>
-            <button class="num-btn" onclick="typeNum(4)">4</button>
-            <button class="num-btn" onclick="typeNum(5)">5</button>
-            <button class="num-btn" onclick="typeNum(6)">6</button>
-            <button class="num-btn" onclick="typeNum(7)">7</button>
-            <button class="num-btn" onclick="typeNum(8)">8</button>
-            <button class="num-btn" onclick="typeNum(9)">9</button>
-            <button class="btn-sys" onclick="clearNum()">清除</button>
-            <button class="num-btn" onclick="typeNum(0)">0</button>
-            <button class="btn-sys" onclick="sendNum()" style="background:#f39c12;">送出</button>
+            <button class="btn btn-num" onclick="press(1)">1</button>
+            <button class="btn btn-num" onclick="press(2)">2</button>
+            <button class="btn btn-num" onclick="press(3)">3</button>
+            <button class="btn btn-num" onclick="press(4)">4</button>
+            <button class="btn btn-num" onclick="press(5)">5</button>
+            <button class="btn btn-num" onclick="press(6)">6</button>
+            <button class="btn btn-num" onclick="press(7)">7</button>
+            <button class="btn btn-num" onclick="press(8)">8</button>
+            <button class="btn btn-num" onclick="press(9)">9</button>
+            <button class="btn btn-clear" onclick="clearNum()">C</button>
+            <button class="btn btn-num" onclick="press(0)">0</button>
+            <button class="btn btn-send" onclick="submitNum()">OK</button>
         </div>
     </div>
-    
-    <div class="btn-group">
-        <button class="btn-sys" onclick="sendCmd('U')">⏪ 悔棋</button>
-        <button class="btn-sys" onclick="sendCmd('R')">🔄 重置牌靴</button>
+
+    <div class="card">
+        <div class="info-label">⚡ 快捷結果錄入</div>
+        <div class="shortcut-group">
+            <button class="btn btn-p" onclick="send('P')">閒</button>
+            <button class="btn btn-t" onclick="send('T')">和</button>
+            <button class="btn btn-b" onclick="send('B')">莊</button>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="btn" style="background:#333; flex:1; font-size:14px; padding:10px;" onclick="send('U')">⏪ 悔棋</button>
+            <button class="btn" style="background:#333; flex:1; font-size:14px; padding:10px;" onclick="send('R')">🔄 重置</button>
+        </div>
     </div>
-    
-    <div class="card" style="margin-top: 15px;">
-        <p>⏳ 動態: <span id="history">等待輸入...</span></p>
+
+    <div style="text-align: center; color: #444; font-size: 12px; margin-top: 5px;">
+        最後動作: <span id="log">無</span>
     </div>
 
     <script>
-        let currentInput = "";
+        let input = "";
+        function press(n) { if(input.length < 6) input += n; updateDisplay(); }
+        function clearNum() { input = ""; updateDisplay(); }
+        function updateDisplay() { document.getElementById('num-display').innerText = input || "____"; }
         
-        function typeNum(n) {
-            if(currentInput.length < 6) currentInput += n;
-            document.getElementById("input-display").innerText = currentInput;
-            document.getElementById("input-display").style.color = "#fff";
-        }
-        
-        function clearNum() {
-            currentInput = "";
-            document.getElementById("input-display").innerText = "_";
-            document.getElementById("input-display").style.color = "#aaa";
+        function submitNum() {
+            if(input.length >= 4) { send(input); clearNum(); }
+            else { alert("點數不足"); }
         }
 
-        function sendNum() {
-            if(currentInput.length >= 4) {
-                sendCmd(currentInput);
-                clearNum();
-            } else {
-                alert("請輸入至少 4 個數字的牌面點數！");
-            }
-        }
-
-        function sendCmd(command) {
+        function send(cmd) {
             fetch('/api/cmd', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cmd: command })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({cmd: cmd})
             })
             .then(res => res.json())
             .then(data => {
-                document.getElementById("round").innerText = data.round;
-                document.getElementById("cap").innerText = data.capital;
-                document.getElementById("bet_advice").innerText = data.bet_advice;
-                document.getElementById("stats").innerText = data.stats;
-                document.getElementById("history").innerText = data.last_action;
+                document.getElementById('round').innerText = data.round;
+                document.getElementById('streak').innerText = data.streak;
+                document.getElementById('advice').innerText = data.advice;
+                document.getElementById('stability').innerText = "下三路訊號：" + data.stability;
+                document.getElementById('log').innerText = data.last_action;
+                
+                // 動態調整顏色
+                const advBox = document.getElementById('advice');
+                if(data.advice.includes("🔥")) advBox.style.color = "#ff3e3e";
+                else if(data.advice.includes("💡")) advBox.style.color = "#f39c12";
+                else if(data.advice.includes("👉")) advBox.style.color = "#1976d2";
+                else advBox.style.color = "#00ff88";
             });
         }
     </script>
