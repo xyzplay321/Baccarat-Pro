@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>百家樂雙引擎決策系統</title>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; text-align: center; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: left; }
+        h2, h3, p { margin: 5px 0; }
+        .highlight { color: #f39c12; font-weight: bold; }
+        .btn-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 15px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; }
+        button:active { opacity: 0.7; transform: scale(0.98); }
+        .btn-b { background-color: #d32f2f; } 
+        .btn-p { background-color: #1976d2; } 
+        .btn-t { background-color: #388e3c; } 
+        .btn-sys { background-color: #555; font-size: 16px;} 
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .num-btn { background: #333; padding: 15px; font-size: 22px; border-radius: 8px; color: white; border: none;}
+    </style>
+</head>
+<body>
+    <h2>🤖 全自動打牌輔助系統</h2>
+    
+    <div class="card">
+        <p>【 第 <span id="round" class="highlight">1</span> 局 】 | 💰 本金: <span id="cap" class="highlight">10000</span></p>
+        <hr style="border-color: #333;">
+        <p>🎯 系統策略: <span id="bet_advice" style="color:#00e676;">等待開局...</span></p>
+        <p>🏆 引擎戰績: <span id="stats">無紀錄</span></p>
+    </div>
+
+    <div class="card">
+        <h3 style="text-align: center;">⚡ 盲打快捷進場區</h3>
+        <div class="btn-group">
+            <button class="btn-p" onclick="sendCmd('P')">🔵 閒贏</button>
+            <button class="btn-t" onclick="sendCmd('T')">⚪ 和局</button>
+            <button class="btn-b" onclick="sendCmd('B')">🔴 莊贏</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="text-align: center;">🔢 精算點數輸入</h3>
+        <h2 id="input-display" style="letter-spacing: 5px; color: #aaa; text-align: center; background: #000; padding: 10px; border-radius: 8px;">_</h2>
+        <div class="numpad">
+            <button class="num-btn" onclick="typeNum(1)">1</button>
+            <button class="num-btn" onclick="typeNum(2)">2</button>
+            <button class="num-btn" onclick="typeNum(3)">3</button>
+            <button class="num-btn" onclick="typeNum(4)">4</button>
+            <button class="num-btn" onclick="typeNum(5)">5</button>
+            <button class="num-btn" onclick="typeNum(6)">6</button>
+            <button class="num-btn" onclick="typeNum(7)">7</button>
+            <button class="num-btn" onclick="typeNum(8)">8</button>
+            <button class="num-btn" onclick="typeNum(9)">9</button>
+            <button class="btn-sys" onclick="clearNum()">清除</button>
+            <button class="num-btn" onclick="typeNum(0)">0</button>
+            <button class="btn-sys" onclick="sendNum()" style="background:#f39c12;">送出</button>
+        </div>
+    </div>
+    
+    <div class="btn-group">
+        <button class="btn-sys" onclick="sendCmd('U')">⏪ 悔棋</button>
+        <button class="btn-sys" onclick="sendCmd('R')">🔄 重置牌靴</button>
+    </div>
+    
+    <div class="card" style="margin-top: 15px;">
+        <p>⏳ 動態: <span id="history">等待輸入...</span></p>
+    </div>
+
+    <script>
+        let currentInput = "";
+        
+        function typeNum(n) {
+            if(currentInput.length < 6) currentInput += n;
+            document.getElementById("input-display").innerText = currentInput;
+            document.getElementById("input-display").style.color = "#fff";
+        }
+        
+        function clearNum() {
+            currentInput = "";
+            document.getElementById("input-display").innerText = "_";
+            document.getElementById("input-display").style.color = "#aaa";
+        }
+
+        function sendNum() {
+            if(currentInput.length >= 4) {
+                sendCmd(currentInput);
+                clearNum();
+            } else {
+                alert("請輸入至少 4 個數字的牌面點數！");
+            }
+        }
+
+        function sendCmd(command) {
+            fetch('/api/cmd', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cmd: command })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("round").innerText = data.round;
+                document.getElementById("cap").innerText = data.capital;
+                document.getElementById("bet_advice").innerText = data.bet_advice;
+                document.getElementById("stats").innerText = data.stats;
+                document.getElementById("history").innerText = data.last_action;
+            });
+        }
+    </script>
+</body>
+</html>
