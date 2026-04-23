@@ -3,107 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Baccarat Master UI</title>
+    <title>Baccarat AI Engine</title>
     <style>
-        body { background: #0a0a0a; color: #e0e0e0; font-family: sans-serif; margin: 0; padding: 10px; }
-        .status-bar { display: flex; justify-content: space-between; padding: 10px; background: #1a1a1a; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #f39c12; }
-        .card { background: #161616; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .advice-box { text-align: center; font-size: 24px; font-weight: bold; color: #00ff88; margin: 10px 0; text-shadow: 0 0 10px rgba(0,255,136,0.3); }
-        .stability-text { font-size: 14px; color: #aaa; text-align: center; border-top: 1px solid #333; pt: 10px; margin-top: 10px; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .btn { border: none; border-radius: 8px; color: white; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.1s; }
-        .btn:active { transform: scale(0.95); opacity: 0.8; }
-        .btn-num { background: #2c2c2c; padding: 18px; }
-        .btn-send { background: #f39c12; grid-column: span 1; }
-        .btn-clear { background: #444; }
-        .shortcut-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn-p { background: #1976d2; flex: 1; padding: 20px; }
-        .btn-t { background: #388e3c; flex: 0.6; padding: 20px; }
-        .btn-b { background: #d32f2f; flex: 1; padding: 20px; }
-        .display-area { background: #000; color: #00ff88; font-family: monospace; font-size: 28px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 10px; letter-spacing: 4px; height: 35px; line-height: 35px; }
-        .info-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        body { background: #050505; color: #fff; font-family: sans-serif; margin: 0; padding: 10px; }
+        .header { display: flex; justify-content: space-between; padding: 10px; background: #111; border-radius: 8px; margin-bottom: 8px; border-bottom: 2px solid #333; }
+        .card { background: #121212; border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+        .prob-container { display: flex; height: 30px; background: #222; border-radius: 15px; overflow: hidden; margin: 10px 0; border: 1px solid #444; }
+        #b-bar { background: linear-gradient(90deg, #ff4b2b, #ff416c); width: 50%; transition: 0.5s; text-align: right; padding-right: 10px; line-height: 30px; font-weight: bold; }
+        #p-bar { background: linear-gradient(90deg, #12c2e9, #c471ed); width: 50%; transition: 0.5s; text-align: left; padding-left: 10px; line-height: 30px; font-weight: bold; }
+        .advice-main { font-size: 26px; text-align: center; font-weight: bold; margin: 10px 0; color: #ffd700; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .btn { border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-num { background: #222; font-size: 20px; padding: 15px; border: 1px solid #333; }
+        .btn-action { background: #f39c12; font-size: 18px; }
+        .shortcut-group { display: flex; gap: 6px; margin-top: 8px; }
+        .btn-p { background: #007bff; flex: 1; padding: 18px; font-size: 20px; }
+        .btn-t { background: #28a745; flex: 0.5; padding: 18px; font-size: 20px; }
+        .btn-b { background: #dc3545; flex: 1; padding: 18px; font-size: 20px; }
+        .display { background: #000; color: #00ff00; font-family: monospace; font-size: 32px; text-align: center; padding: 8px; border-radius: 6px; margin-bottom: 8px; letter-spacing: 5px; min-height: 40px; }
+        .label { font-size: 11px; color: #666; margin-bottom: 4px; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <div class="status-bar">
-        <div>第 <span id="round" style="color:#f39c12; font-size: 20px;">1</span> 局</div>
-        <div id="streak" style="font-weight: bold;">---</div>
+    <div class="header">
+        <div style="color: #f39c12;">Round <span id="round">1</span></div>
+        <div id="streak">---</div>
     </div>
 
     <div class="card">
-        <div class="info-label">🎯 當前決策建議</div>
-        <div id="advice" class="advice-box">等待數據...</div>
-        <div id="stability" class="stability-text">下三路訊號：⏳ 等待成路</div>
+        <div class="label">📊 綜合引擎機率預測 (莊 vs 閒)</div>
+        <div class="prob-container">
+            <div id="b-bar">50.7%</div>
+            <div id="p-bar">49.3%</div>
+        </div>
+        <div id="advice" class="advice-main">等待輸入數據...</div>
+        <div id="stability" style="font-size: 12px; text-align: center; color: #888; border-top: 1px solid #222; padding-top: 8px;">訊號穩定度：⏳</div>
     </div>
 
     <div class="card">
-        <div class="info-label">🔢 精算點數輸入 (4-6位)</div>
-        <div id="num-display" class="display-area">____</div>
+        <div class="label">🔢 精算牌面點數</div>
+        <div id="num-display" class="display">____</div>
         <div class="numpad">
-            <button class="btn btn-num" onclick="press(1)">1</button>
-            <button class="btn btn-num" onclick="press(2)">2</button>
-            <button class="btn btn-num" onclick="press(3)">3</button>
-            <button class="btn btn-num" onclick="press(4)">4</button>
-            <button class="btn btn-num" onclick="press(5)">5</button>
-            <button class="btn btn-num" onclick="press(6)">6</button>
-            <button class="btn btn-num" onclick="press(7)">7</button>
-            <button class="btn btn-num" onclick="press(8)">8</button>
-            <button class="btn btn-num" onclick="press(9)">9</button>
-            <button class="btn btn-clear" onclick="clearNum()">C</button>
-            <button class="btn btn-num" onclick="press(0)">0</button>
-            <button class="btn btn-send" onclick="submitNum()">OK</button>
+            <button class="btn btn-num" onclick="p(1)">1</button>
+            <button class="btn btn-num" onclick="p(2)">2</button>
+            <button class="btn btn-num" onclick="p(3)">3</button>
+            <button class="btn btn-num" onclick="p(4)">4</button>
+            <button class="btn btn-num" onclick="p(5)">5</button>
+            <button class="btn btn-num" onclick="p(6)">6</button>
+            <button class="btn btn-num" onclick="p(7)">7</button>
+            <button class="btn btn-num" onclick="p(8)">8</button>
+            <button class="btn btn-num" onclick="p(9)">9</button>
+            <button class="btn btn-num" style="background:#444;" onclick="c()">C</button>
+            <button class="btn btn-num" onclick="p(0)">0</button>
+            <button class="btn btn-action" onclick="ok()">OK</button>
         </div>
     </div>
 
     <div class="card">
-        <div class="info-label">⚡ 快捷結果錄入</div>
+        <div class="label">⚡ 快捷結果錄入</div>
         <div class="shortcut-group">
-            <button class="btn btn-p" onclick="send('P')">閒</button>
-            <button class="btn btn-t" onclick="send('T')">和</button>
-            <button class="btn btn-b" onclick="send('B')">莊</button>
+            <button class="btn btn-p" onclick="s('P')">閒</button>
+            <button class="btn btn-t" onclick="s('T')">和</button>
+            <button class="btn btn-b" onclick="s('B')">莊</button>
         </div>
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button class="btn" style="background:#333; flex:1; font-size:14px; padding:10px;" onclick="send('U')">⏪ 悔棋</button>
-            <button class="btn" style="background:#333; flex:1; font-size:14px; padding:10px;" onclick="send('R')">🔄 重置</button>
+        <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <button class="btn" style="background:#222; flex:1; padding:8px; font-size:12px;" onclick="s('U')">悔棋</button>
+            <button class="btn" style="background:#222; flex:1; padding:8px; font-size:12px;" onclick="s('R')">重置</button>
         </div>
-    </div>
-
-    <div style="text-align: center; color: #444; font-size: 12px; margin-top: 5px;">
-        最後動作: <span id="log">無</span>
     </div>
 
     <script>
-        let input = "";
-        function press(n) { if(input.length < 6) input += n; updateDisplay(); }
-        function clearNum() { input = ""; updateDisplay(); }
-        function updateDisplay() { document.getElementById('num-display').innerText = input || "____"; }
-        
-        function submitNum() {
-            if(input.length >= 4) { send(input); clearNum(); }
-            else { alert("點數不足"); }
-        }
+        let val = "";
+        function p(n) { if(val.length<6) val+=n; update(); }
+        function c() { val=""; update(); }
+        function update() { document.getElementById('num-display').innerText = val || "____"; }
+        function ok() { if(val.length>=4){ s(val); c(); } }
 
-        function send(cmd) {
+        function s(cmd) {
             fetch('/api/cmd', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({cmd: cmd})
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('round').innerText = data.round;
-                document.getElementById('streak').innerText = data.streak;
-                document.getElementById('advice').innerText = data.advice;
-                document.getElementById('stability').innerText = "下三路訊號：" + data.stability;
-                document.getElementById('log').innerText = data.last_action;
+            }).then(r => r.json()).then(d => {
+                document.getElementById('round').innerText = d.round;
+                document.getElementById('streak').innerText = d.streak;
+                document.getElementById('advice').innerText = d.advice;
+                document.getElementById('stability').innerText = "訊號穩定度：" + d.stability;
                 
-                // 動態調整顏色
-                const advBox = document.getElementById('advice');
-                if(data.advice.includes("🔥")) advBox.style.color = "#ff3e3e";
-                else if(data.advice.includes("💡")) advBox.style.color = "#f39c12";
-                else if(data.advice.includes("👉")) advBox.style.color = "#1976d2";
-                else advBox.style.color = "#00ff88";
+                document.getElementById('b-bar').style.width = d.b_prob;
+                document.getElementById('b-bar').innerText = d.b_prob;
+                document.getElementById('p-bar').style.width = d.p_prob;
+                document.getElementById('p-bar').innerText = d.p_prob;
             });
         }
     </script>
