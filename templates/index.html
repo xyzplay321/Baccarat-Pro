@@ -140,6 +140,42 @@
                 document.getElementById('history').innerHTML = d.history.map(txt => `<div class="history-item">${txt}</div>`).join('');
             });
         }
+        // ⚡ 終極優化：全鍵盤快捷鍵監聽
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+            
+            // 阻擋預設行為(例如按下空白鍵網頁會往下滾)
+            if(['Enter', 'Backspace', 'Escape'].includes(key)) {
+                event.preventDefault();
+            }
+
+            // 1. 攔截數字鍵 (精算點數)
+            if (key >= '0' && key <= '9') {
+                p(key);
+            }
+            // 2. 攔截 Enter 鍵 (送出點數)
+            else if (key === 'Enter') {
+                ok();
+            }
+            // 3. 攔截 Backspace 或 Esc 鍵 (清除當前輸入)
+            else if (key === 'Backspace' || key === 'Escape') {
+                c();
+            }
+            // 4. 自訂快捷盲打 (例如: 左手按 Z=閒, X=和, C=莊 ; 或者數字鍵盤的 / * -)
+            else if (key === 'z' || key === 'Z' || key === '/') {
+                s('P'); // 閒
+            }
+            else if (key === 'x' || key === 'X' || key === '*') {
+                s('T'); // 和
+            }
+            else if (key === 'c' || key === 'C' || key === '-') {
+                s('B'); // 莊
+            }
+            // 5. 悔棋快捷鍵 (例如: U 或 數字鍵盤的 +)
+            else if (key === 'u' || key === 'U' || key === '+') {
+                s('U'); 
+            }
+        });
     </script>
 </body>
 </html>
