@@ -282,7 +282,7 @@ def handle_command():
     units = 0
     
     # 依據剩餘牌副數，動態調整進場門檻 (牌越少，信心越高，門檻越低)
-    threshold = 55.0 if remaining_decks > 4 else 53.0 if remaining_decks > 2 else 51.5
+    threshold = 52.0 if remaining_decks > 4 else 51.5 if remaining_decks > 2 else 51.0
 
     # 判斷是否突破門檻
     if b_pct >= threshold:
