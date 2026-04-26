@@ -1,188 +1,96 @@
-<!DOCTYPE html> <html lang="zh-TW"> <head>
-    <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <title>百家樂量化交易大腦</title>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Baccarat Terminal</title>
     <style>
-        /* 網頁主體：黑底白字，移除邊界 */
-        body { background: #080808; color: #fff; font-family: sans-serif; margin: 0; padding: 8px; }
-        /* 卡片區塊：用來將介面切成一塊一塊的方塊 */
-        .card { background: #151515; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #222; }
-        
-        /* 視覺化大路圖專屬設定 */
-        .roadmap { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 5px; height: 75px;}
-        .road-col { display: flex; flex-direction: column; gap: 2px; } /* 直列設定 */
-        /* 大路圈圈的外觀設計 */
-        .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; display: inline-block; background: transparent;}
-        .dot-B { border-color: #ff3e3e; } /* 莊家紅圈 */
-        .dot-P { border-color: #12c2e9; } /* 閒家藍圈 */
-        .dot-T { border-color: #28a745; background: #28a745;} /* 和局綠底 */
-        
-        /* 核心機率顯示區排版 */
-        .prob-box { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: #0a0a0a; border-radius: 8px; }
-        .prob-number { font-size: 34px; font-weight: 900; font-family: monospace; } /* 巨大數字設定 */
-        .prob-b { color: #ff3e3e; } /* 莊機率字體顏色 */
-        .prob-p { color: #12c2e9; } /* 閒機率字體顏色 */
-        
-        /* 建議決策與注碼文字設定 */
-        .advice-main { font-size: 24px; text-align: center; font-weight: bold; margin: 10px 0; color: #00ff88; }
-        .bet-unit { font-size: 18px; text-align: center; background: #f39c12; color: #000; font-weight: bold; padding: 5px; border-radius: 5px; margin-bottom: 10px; display: inline-block; width: 100%; box-sizing: border-box;}
-        
-        /* 底部副資訊列 (圖形與波動率) */
-        .info-row { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-top: 5px; border-top: 1px dashed #333; padding-top: 5px;}
-        /* 邊注警報的閃爍動畫特效 */
-        .side-alert { color: #ff00ff; font-weight: bold; text-align: center; font-size: 14px; margin-top: 5px; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-        
-        /* 歷史日誌清單設定 */
-        .history-list { font-size: 11px; color: #777; max-height: 50px; overflow-y: hidden; margin-top: 5px; }
-        .history-item { margin-bottom: 2px; }
-        
-        /* 數字按鍵盤排版 (Grid 網格排版 3行3列) */
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .btn { border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .btn:active { transform: scale(0.95); } /* 按鈕按下的縮小回饋感 */
-        .btn-num { background: #222; font-size: 20px; padding: 14px; }
-        /* 快捷按鈕區塊排版 */
-        .shortcut-group { display: flex; gap: 6px; margin-top: 6px; }
-        .btn-p-short { background: #007bff; flex: 1; padding: 16px; font-size: 20px; }
-        .btn-t-short { background: #28a745; flex: 0.5; padding: 16px; font-size: 16px; }
-        .btn-b-short { background: #dc3545; flex: 1; padding: 16px; font-size: 20px; }
-        
-        /* 顯示輸入數字的螢幕區塊 */
-        .display { background: #000; color: #00ff00; font-family: monospace; font-size: 28px; text-align: center; padding: 8px; border-radius: 6px; margin-bottom: 8px; letter-spacing: 6px;}
-        /* 每個區塊的小標題 */
-        .label { font-size: 12px; color: #f39c12; margin-bottom: 5px; font-weight: bold;}
+        /* 經典終端機風格：黑底、亮綠/亮白字、等寬字體 */
+        body { 
+            background-color: #0c0c0c; 
+            color: #d4d4d4; 
+            font-family: "Courier New", Courier, monospace; 
+            margin: 0; 
+            padding: 15px; 
+            font-size: 15px; 
+            line-height: 1.4;
+        }
+        /* 文字輸出區塊：保留所有的空格與換行 */
+        #output {
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+        }
+        /* 指令輸入區塊 */
+        .input-area {
+            margin-top: 10px;
+            color: #f39c12; /* 提示字體使用黃色 */
+            font-weight: bold;
+        }
+        .input-line {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        /* 隱藏原生輸入框的邊界，讓它看起來像終端機游標 */
+        input {
+            background: transparent;
+            border: none;
+            color: #00ff88;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 16px;
+            font-weight: bold;
+            outline: none;
+            flex-grow: 1;
+            margin-left: 8px;
+            letter-spacing: 2px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div class="label">📈 實時大路圖 (最近 12 列)</div>
-        <div id="roadmap" class="roadmap">
-            <div style="color:#666; font-size: 12px; line-height: 75px;">等待開局畫路...</div>
-        </div>
-    </div>
+    <div id="output">連線中... 啟動量化大腦...</div>
 
-    <div class="card">
-        <div style="display: flex; justify-content: space-between;">
-            <div class="label">🧠 綜合機率 (EOR真數 + 凱利)</div>
-            <div id="streak" style="font-weight: bold; color: #fff; font-size: 14px;">---</div>
+    <div class="input-area">
+        <div>👉 指令: [數字]點數 | [B]莊 [P]閒 [T]和 | [U]悔棋 | [R]重置</div>
+        <div class="input-line">
+            請輸入: <input type="text" id="cmdbox" autocomplete="off" autofocus>
         </div>
-        
-        <div class="prob-box">
-            <div style="text-align: center;"><div style="color: #ff3e3e; font-size: 12px;">莊 (Banker)</div><div id="b_prob" class="prob-number prob-b">50.7%</div></div>
-            <div style="color: #555; font-weight: bold;">VS</div>
-            <div style="text-align: center;"><div style="color: #12c2e9; font-size: 12px;">閒 (Player)</div><div id="p_prob" class="prob-number prob-p">49.3%</div></div>
-        </div>
-
-        <div id="advice" class="advice-main">等待數據...</div>
-        <div id="bet_units" class="bet-unit">建議注碼: 0 單位</div>
-        <div id="side_alert" class="side-alert"></div>
-        
-        <div class="info-row">
-            <span id="pattern">圖形：無</span>
-            <span id="volatility">市場：計算中</span>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="label">精算輸入 / 快捷錄入</div>
-        <div id="num-display" class="display">____</div>
-        <div class="numpad">
-            <button class="btn btn-num" onclick="p(1)">1</button><button class="btn btn-num" onclick="p(2)">2</button><button class="btn btn-num" onclick="p(3)">3</button>
-            <button class="btn btn-num" onclick="p(4)">4</button><button class="btn btn-num" onclick="p(5)">5</button><button class="btn btn-num" onclick="p(6)">6</button>
-            <button class="btn btn-num" onclick="p(7)">7</button><button class="btn btn-num" onclick="p(8)">8</button><button class="btn btn-num" onclick="p(9)">9</button>
-            <button class="btn btn-num" style="background:#444;" onclick="c()">C</button><button class="btn btn-num" onclick="p(0)">0</button><button class="btn btn-num" style="background:#f39c12;" onclick="ok()">OK</button>
-        </div>
-        
-        <div class="shortcut-group">
-            <button class="btn btn-p-short" onclick="s('P')">閒</button>
-            <button class="btn btn-t-short" onclick="s('T')">和</button>
-            <button class="btn btn-b-short" onclick="s('B')">莊</button>
-        </div>
-        
-        <div style="display: flex; gap: 6px; margin-top: 8px;">
-            <button class="btn" style="background:#222; flex:1; padding:10px; font-size:12px;" onclick="s('U')">⏪ 悔棋</button>
-            <button class="btn" style="background:#222; flex:1; padding:10px; font-size:12px;" onclick="s('R')">🔄 重置</button>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="label">📝 最近 5 手核對日誌</div>
-        <div id="history" class="history-list">無紀錄</div>
     </div>
 
     <script>
-        let val = ""; // 儲存目前輸入的數字字串
-        
-        // 將輸入的數字接在後面 (最高 6 碼)
-        function p(n) { if(val.length<6) val+=n; update(); }
-        
-        // 清空輸入框
-        function c() { val=""; update(); }
-        
-        // 刷新螢幕顯示文字
-        function update() { document.getElementById('num-display').innerText = val || "____"; }
-        
-        // 按下 OK 送出資料 (只要有輸入數字就能送出，配合兩段式設計)
-        function ok() { if(val.length > 0){ s(val); c(); } }
+        const out = document.getElementById('output');
+        const cmdbox = document.getElementById('cmdbox');
 
-        // 核心連線函式：發送請求給 Python 後端
-        function s(cmd) {
-            fetch('/api/cmd', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({cmd: cmd}) 
+        // 發送指令到後端並更新畫面
+        function sendCmd(command) {
+            fetch('/api/cmd', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({cmd: command})
             })
-            .then(r => r.json()) // 接收回傳的 JSON 資料
-            .then(d => {
-                // 將後端傳來的資料更新到畫面的標籤上
-                document.getElementById('streak').innerText = d.streak;
-                document.getElementById('advice').innerText = d.advice;
-                document.getElementById('b_prob').innerText = d.b_prob;
-                document.getElementById('p_prob').innerText = d.p_prob;
-                document.getElementById('pattern').innerText = "圖形: " + d.pattern;
-                document.getElementById('volatility').innerText = "市場: " + d.volatility;
-                document.getElementById('side_alert').innerText = d.side_alert;
-                document.getElementById('bet_units').innerText = "建議注碼: " + d.units;
-
-                // 根據建議的狀態，動態改變決策文字的顏色
-                const advBox = document.getElementById('advice');
-                if(d.advice.includes("🔥")) { advBox.style.color = "#ff3e3e"; } // 強烈訊號亮紅字
-                else if(d.advice.includes("⏳")) { advBox.style.color = "#f39c12"; } // 等待補牌亮黃字
-                else { advBox.style.color = "#00ff88"; } // 觀望亮綠字
-
-                // 用 JS 動態畫出大路圖的圓圈
-                const rm = document.getElementById('roadmap');
-                rm.innerHTML = ""; // 先清空舊圖
-                if(d.big_road.length === 0) rm.innerHTML = '<div style="color:#666; font-size: 12px; line-height: 75px;">等待開局畫路...</div>';
-                d.big_road.forEach(col => {
-                    let colHtml = '<div class="road-col">';
-                    col.forEach(res => { colHtml += `<div class="dot dot-${res}"></div>`; }); // 依據 B/P/T 套用對應的 CSS 圓圈樣式
-                    colHtml += '</div>';
-                    rm.innerHTML += colHtml;
-                });
-                rm.scrollLeft = rm.scrollWidth; // 讓大路圖自動往右捲動到最新的一列
-
-                // 渲染歷史日誌陣列為 HTML
-                document.getElementById('history').innerHTML = d.history.map(txt => `<div class="history-item">${txt}</div>`).join('');
+            .then(res => res.json())
+            .then(data => {
+                out.innerText = data.terminal_text; // 將 Python 排版好的文字直接貼上
+                window.scrollTo(0, document.body.scrollHeight); // 畫面自動滾到最底
             });
         }
 
-        // ⚡ 實體鍵盤監聽事件：讓你不用滑鼠，直接盲打
-        document.addEventListener('keydown', function(event) {
-            const key = event.key;
-            
-            // 防止按下空白鍵或 Enter 導致網頁亂捲動
-            if(['Enter', 'Backspace', 'Escape'].includes(key)) { event.preventDefault(); }
-
-            if (key >= '0' && key <= '9') { p(key); } // 數字鍵輸入
-            else if (key === 'Enter') { ok(); } // Enter 鍵送出
-            else if (key === 'Backspace' || key === 'Escape') { c(); } // 退格鍵刪除
-            // 盲打快捷鍵對應：左手鍵盤 或 小鍵盤符號
-            else if (key === 'z' || key === 'Z' || key === '/') { s('P'); } // 閒贏
-            else if (key === 'x' || key === 'X' || key === '*') { s('T'); } // 和局
-            else if (key === 'c' || key === 'C' || key === '-') { s('B'); } // 莊贏
-            else if (key === 'u' || key === 'U' || key === '+') { s('U'); } // 悔棋
+        // 監聽輸入框的 Enter 鍵
+        cmdbox.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const val = cmdbox.value.trim();
+                sendCmd(val); // 送出字串 (不管是有數字還是快捷英文字母)
+                cmdbox.value = ''; // 清空輸入框
+            }
         });
+
+        // 確保網頁點擊任何地方，游標都會一直鎖定在輸入框，方便隨時盲打
+        document.addEventListener('click', () => {
+            cmdbox.focus();
+        });
+
+        // 網頁載入時，自動發送一個空指令來獲取第 1 局的畫面
+        sendCmd('');
     </script>
 </body>
 </html>
