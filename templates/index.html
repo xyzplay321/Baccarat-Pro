@@ -5,33 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Baccarat Terminal</title>
     <style>
-        /* 經典終端機風格：黑底、亮綠/亮白字、等寬字體 */
         body { 
             background-color: #0c0c0c; 
             color: #d4d4d4; 
             font-family: "Courier New", Courier, monospace; 
             margin: 0; 
             padding: 15px; 
-            font-size: 15px; 
+            font-size: 14px; 
             line-height: 1.4;
         }
-        /* 文字輸出區塊：保留所有的空格與換行 */
         #output {
             white-space: pre-wrap; 
             word-wrap: break-word;
         }
-        /* 指令輸入區塊 */
         .input-area {
-            margin-top: 10px;
-            color: #f39c12; /* 提示字體使用黃色 */
+            margin-top: 15px;
+            color: #f39c12; 
             font-weight: bold;
+            border-top: 1px dashed #333;
+            padding-top: 10px;
         }
         .input-line {
             display: flex;
             align-items: center;
             margin-top: 5px;
         }
-        /* 隱藏原生輸入框的邊界，讓它看起來像終端機游標 */
         input {
             background: transparent;
             border: none;
@@ -44,6 +42,7 @@
             margin-left: 8px;
             letter-spacing: 2px;
         }
+        .help-text { color: #888; font-size: 12px; margin-bottom: 5px;}
     </style>
 </head>
 <body>
@@ -51,7 +50,8 @@
     <div id="output">連線中... 啟動量化大腦...</div>
 
     <div class="input-area">
-        <div>👉 指令: [數字]點數 | [B]莊 [P]閒 [T]和 | [U]悔棋 | [R]重置</div>
+        <div class="help-text">💡 提示：[兩段式] 輸入4碼後等補牌 | [直錄式] 直接敲 5-6 碼 (前3閒後3莊)</div>
+        <div>👉 指令: [數字] | [B/P/T]盲打 | [U]悔棋 | [R]重置 | [M]換輸入 | [S]換策略</div>
         <div class="input-line">
             請輸入: <input type="text" id="cmdbox" autocomplete="off" autofocus>
         </div>
@@ -61,7 +61,6 @@
         const out = document.getElementById('output');
         const cmdbox = document.getElementById('cmdbox');
 
-        // 發送指令到後端並更新畫面
         function sendCmd(command) {
             fetch('/api/cmd', {
                 method: 'POST',
@@ -70,27 +69,35 @@
             })
             .then(res => res.json())
             .then(data => {
-                out.innerText = data.terminal_text; // 將 Python 排版好的文字直接貼上
-                window.scrollTo(0, document.body.scrollHeight); // 畫面自動滾到最底
+                out.innerText = data.terminal_text; 
+                window.scrollTo(0, document.body.scrollHeight); 
             });
         }
 
-        // 監聽輸入框的 Enter 鍵
         cmdbox.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 const val = cmdbox.value.trim();
-                sendCmd(val); // 送出字串 (不管是有數字還是快捷英文字母)
-                cmdbox.value = ''; // 清空輸入框
+                sendCmd(val); 
+                cmdbox.value = ''; 
             }
         });
 
-        // 確保網頁點擊任何地方，游標都會一直鎖定在輸入框，方便隨時盲打
-        document.addEventListener('click', () => {
-            cmdbox.focus();
+        // 綁定 M 和 S 的全域快捷鍵
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+            if(['Enter', 'Backspace', 'Escape'].includes(key)) { return; } // 交給 input 框自己處理
+            
+            // 盲打快捷鍵綁定
+            if (key === 'z' || key === 'Z' || key === '/') { sendCmd('P'); cmdbox.value = ''; event.preventDefault(); }
+            else if (key === 'x' || key === 'X' || key === '*') { sendCmd('T'); cmdbox.value = ''; event.preventDefault(); }
+            else if (key === 'c' || key === 'C' || key === '-') { sendCmd('B'); cmdbox.value = ''; event.preventDefault(); }
+            else if (key === 'u' || key === 'U' || key === '+') { sendCmd('U'); cmdbox.value = ''; event.preventDefault(); }
+            else if (key === 'm' || key === 'M') { sendCmd('M'); cmdbox.value = ''; event.preventDefault(); }
+            else if (key === 's' || key === 'S') { sendCmd('S'); cmdbox.value = ''; event.preventDefault(); }
         });
 
-        // 網頁載入時，自動發送一個空指令來獲取第 1 局的畫面
-        sendCmd('');
+        document.addEventListener('click', () => { cmdbox.focus(); });
+        sendCmd(''); // 初始化呼叫
     </script>
 </body>
 </html>
