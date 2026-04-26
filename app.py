@@ -56,7 +56,7 @@ class BaccaratPro:
         else: max_limit = 5
         return min(units, max_limit)
 
-def _simulate_derived_road(self, board, k, guess):
+    def _simulate_derived_road(self, board, k, guess):
         temp_br = [col[:] for col in board]
         if not temp_br or temp_br[-1][0] != guess: temp_br.append([guess])
         else: temp_br[-1].append(guess)
