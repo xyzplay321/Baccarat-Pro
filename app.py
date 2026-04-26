@@ -56,15 +56,26 @@ class BaccaratPro:
         else: max_limit = 5
         return min(units, max_limit)
 
-    def _simulate_derived_road(self, board, k, guess):
+def _simulate_derived_road(self, board, k, guess):
         temp_br = [col[:] for col in board]
         if not temp_br or temp_br[-1][0] != guess: temp_br.append([guess])
         else: temp_br[-1].append(guess)
         C = len(temp_br) - 1 
         if C <= k: return None 
         R = len(temp_br[C]) - 1 
-        if R > 0: return len(temp_br[C-k]) >= R
-        else: return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
+        
+        # 🟢 完美還原賭場「下三路」標準畫法
+        if R > 0: 
+            comp_len = len(temp_br[C-k])
+            if R < comp_len: 
+                return True       # 狀況 1：對齊的格子有珠子 -> 紅筆
+            elif R == comp_len: 
+                return False      # 狀況 2：齊腳後突出的第一粒 -> 藍筆
+            else: 
+                return True       # 狀況 3：突破後繼續連 (長連長紅) -> 紅筆 (舊版漏了這個)
+        else: 
+            # 換列時，比較前兩列的長度
+            return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
 
     def _update_streaks_and_wl(self, res):
         if res == 'T': return 
