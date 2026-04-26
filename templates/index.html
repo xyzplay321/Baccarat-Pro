@@ -5,37 +5,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Baccarat Quantitative Brain</title>
     <style>
-        body { background-color: #0c0c0c; color: #d4d4d4; font-family: "Courier New", Courier, monospace; margin: 0; padding: 12px; font-size: 14px; line-height: 1.4; }
-        #output { white-space: pre-wrap; word-wrap: break-word; }
-        .input-area { margin-top: 10px; color: #f39c12; font-weight: bold; border-top: 1px dashed #333; padding-top: 10px; }
-        .input-line { display: flex; align-items: center; margin-top: 5px; }
-        input { background: transparent; border: none; color: #00ff88; font-family: "Courier New", Courier, monospace; font-size: 16px; font-weight: bold; outline: none; flex-grow: 1; margin-left: 8px; letter-spacing: 2px; }
+        /* 經典終端機風格設定 */
+        body { 
+            background-color: #0c0c0c; 
+            color: #d4d4d4; 
+            font-family: "Courier New", Courier, monospace; 
+            margin: 0; 
+            padding: 12px; 
+            font-size: 14px; 
+            line-height: 1.4; 
+        }
+        
+        /* 系統輸出區塊，保留所有換行與空格 */
+        #output { 
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+        }
+        
+        /* 底部輸入提示區塊 */
+        .input-area { 
+            margin-top: 10px; 
+            color: #f39c12; 
+            font-weight: bold; 
+            border-top: 1px dashed #333; 
+            padding-top: 10px; 
+        }
+        
+        .input-line { 
+            display: flex; 
+            align-items: center; 
+            margin-top: 5px; 
+        }
+        
+        /* 隱藏原生輸入框，模擬終端機閃爍游標 */
+        input { 
+            background: transparent; 
+            border: none; 
+            color: #00ff88; 
+            font-family: "Courier New", Courier, monospace; 
+            font-size: 16px; 
+            font-weight: bold; 
+            outline: none; 
+            flex-grow: 1; 
+            margin-left: 8px; 
+            letter-spacing: 2px; 
+        }
     </style>
 </head>
 <body>
-    <div id="output">System Booting...</div>
+    
+    <div id="output">System Booting... 連線中...</div>
+    
     <div class="input-area">
         <div>👉 [數字]點數 | [B/P/T]盲打 | [U]悔棋 | [R]重置 | [M]換模式 | [S]換策略 (保守/積極/極進取)</div>
-        <div class="input-line">請輸入: <input type="text" id="cmdbox" autocomplete="off" autofocus></div>
+        <div class="input-line">
+            請輸入: <input type="text" id="cmdbox" autocomplete="off" autofocus>
+        </div>
     </div>
+
     <script>
         const out = document.getElementById('output');
         const cmdbox = document.getElementById('cmdbox');
+
+        // 核心發送指令函式
         function sendCmd(command) {
-            fetch('/api/cmd', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({cmd: command}) })
-            .then(res => res.json()).then(data => { out.innerText = data.terminal_text; window.scrollTo(0, document.body.scrollHeight); });
+            fetch('/api/cmd', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({cmd: command}) 
+            })
+            .then(res => res.json())
+            .then(data => { 
+                // 將後端傳來的排版文字直接貼上
+                out.innerText = data.terminal_text; 
+                // 畫面自動滾動到最下方
+                window.scrollTo(0, document.body.scrollHeight); 
+            });
         }
-        cmdbox.addEventListener('keypress', (e) => { if (e.key === 'Enter') { sendCmd(cmdbox.value.trim()); cmdbox.value = ''; } });
+
+        // 監聽輸入框的 Enter 鍵送出
+        cmdbox.addEventListener('keypress', (e) => { 
+            if (e.key === 'Enter') { 
+                sendCmd(cmdbox.value.trim()); 
+                cmdbox.value = ''; 
+            } 
+        });
+
+        // 全域快捷鍵綁定 (盲打支援)
         document.addEventListener('keydown', (e) => {
+            // 防止輸入框正在打字時觸發快捷鍵，但允許盲按字母
+            if (['Enter', 'Backspace', 'Escape'].includes(e.key)) return; 
+            
             const k = e.key.toLowerCase();
-            if (['z','/'].includes(k)) { sendCmd('P'); e.preventDefault(); }
-            else if (['x','*'].includes(k)) { sendCmd('T'); e.preventDefault(); }
-            else if (['c','-'].includes(k)) { sendCmd('B'); e.preventDefault(); }
-            else if (['u','+'].includes(k)) { sendCmd('U'); e.preventDefault(); }
+            
+            // 莊閒和盲打
+            if (['z', '/'].includes(k)) { sendCmd('P'); e.preventDefault(); }
+            else if (['x', '*'].includes(k)) { sendCmd('T'); e.preventDefault(); }
+            else if (['c', '-'].includes(k)) { sendCmd('B'); e.preventDefault(); }
+            // 系統控制指令
+            else if (['u', '+'].includes(k)) { sendCmd('U'); e.preventDefault(); }
             else if (k === 'm') { sendCmd('M'); e.preventDefault(); }
             else if (k === 's') { sendCmd('S'); e.preventDefault(); }
         });
+
+        // 確保網頁隨便點擊，輸入焦點都會立刻回到隱藏的輸入框上
         document.addEventListener('click', () => cmdbox.focus());
+        
+        // 網頁載入時，自動發送空指令來獲取第一局的初始畫面
         sendCmd('');
     </script>
 </body>
