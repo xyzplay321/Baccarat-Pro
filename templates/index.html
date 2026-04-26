@@ -3,101 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Baccarat Terminal</title>
+    <title>Baccarat Quantitative Brain</title>
     <style>
-        body { 
-            background-color: #0c0c0c; 
-            color: #d4d4d4; 
-            font-family: "Courier New", Courier, monospace; 
-            margin: 0; 
-            padding: 15px; 
-            font-size: 14px; 
-            line-height: 1.4;
-        }
-        #output {
-            white-space: pre-wrap; 
-            word-wrap: break-word;
-        }
-        .input-area {
-            margin-top: 15px;
-            color: #f39c12; 
-            font-weight: bold;
-            border-top: 1px dashed #333;
-            padding-top: 10px;
-        }
-        .input-line {
-            display: flex;
-            align-items: center;
-            margin-top: 5px;
-        }
-        input {
-            background: transparent;
-            border: none;
-            color: #00ff88;
-            font-family: "Courier New", Courier, monospace;
-            font-size: 16px;
-            font-weight: bold;
-            outline: none;
-            flex-grow: 1;
-            margin-left: 8px;
-            letter-spacing: 2px;
-        }
-        .help-text { color: #888; font-size: 12px; margin-bottom: 5px;}
+        body { background-color: #0c0c0c; color: #d4d4d4; font-family: "Courier New", Courier, monospace; margin: 0; padding: 12px; font-size: 14px; line-height: 1.4; }
+        #output { white-space: pre-wrap; word-wrap: break-word; }
+        .input-area { margin-top: 10px; color: #f39c12; font-weight: bold; border-top: 1px dashed #333; padding-top: 10px; }
+        .input-line { display: flex; align-items: center; margin-top: 5px; }
+        input { background: transparent; border: none; color: #00ff88; font-family: "Courier New", Courier, monospace; font-size: 16px; font-weight: bold; outline: none; flex-grow: 1; margin-left: 8px; letter-spacing: 2px; }
     </style>
 </head>
 <body>
-
-    <div id="output">連線中... 啟動量化大腦...</div>
-
+    <div id="output">System Booting...</div>
     <div class="input-area">
-        <div class="help-text">💡 提示：[兩段式] 輸入4碼後等補牌 | [直錄式] 直接敲 5-6 碼 (前3閒後3莊)</div>
-        <div>👉 指令: [數字] | [B/P/T]盲打 | [U]悔棋 | [R]重置 | [M]換輸入 | [S]換策略</div>
-        <div class="input-line">
-            請輸入: <input type="text" id="cmdbox" autocomplete="off" autofocus>
-        </div>
+        <div>👉 [數字]點數 | [B/P/T]盲打 | [U]悔棋 | [R]重置 | [M]換模式 | [S]換策略 (保守/積極/極進取)</div>
+        <div class="input-line">請輸入: <input type="text" id="cmdbox" autocomplete="off" autofocus></div>
     </div>
-
     <script>
         const out = document.getElementById('output');
         const cmdbox = document.getElementById('cmdbox');
-
         function sendCmd(command) {
-            fetch('/api/cmd', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({cmd: command})
-            })
-            .then(res => res.json())
-            .then(data => {
-                out.innerText = data.terminal_text; 
-                window.scrollTo(0, document.body.scrollHeight); 
-            });
+            fetch('/api/cmd', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({cmd: command}) })
+            .then(res => res.json()).then(data => { out.innerText = data.terminal_text; window.scrollTo(0, document.body.scrollHeight); });
         }
-
-        cmdbox.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                const val = cmdbox.value.trim();
-                sendCmd(val); 
-                cmdbox.value = ''; 
-            }
+        cmdbox.addEventListener('keypress', (e) => { if (e.key === 'Enter') { sendCmd(cmdbox.value.trim()); cmdbox.value = ''; } });
+        document.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (['z','/'].includes(k)) { sendCmd('P'); e.preventDefault(); }
+            else if (['x','*'].includes(k)) { sendCmd('T'); e.preventDefault(); }
+            else if (['c','-'].includes(k)) { sendCmd('B'); e.preventDefault(); }
+            else if (['u','+'].includes(k)) { sendCmd('U'); e.preventDefault(); }
+            else if (k === 'm') { sendCmd('M'); e.preventDefault(); }
+            else if (k === 's') { sendCmd('S'); e.preventDefault(); }
         });
-
-        // 綁定 M 和 S 的全域快捷鍵
-        document.addEventListener('keydown', function(event) {
-            const key = event.key;
-            if(['Enter', 'Backspace', 'Escape'].includes(key)) { return; } // 交給 input 框自己處理
-            
-            // 盲打快捷鍵綁定
-            if (key === 'z' || key === 'Z' || key === '/') { sendCmd('P'); cmdbox.value = ''; event.preventDefault(); }
-            else if (key === 'x' || key === 'X' || key === '*') { sendCmd('T'); cmdbox.value = ''; event.preventDefault(); }
-            else if (key === 'c' || key === 'C' || key === '-') { sendCmd('B'); cmdbox.value = ''; event.preventDefault(); }
-            else if (key === 'u' || key === 'U' || key === '+') { sendCmd('U'); cmdbox.value = ''; event.preventDefault(); }
-            else if (key === 'm' || key === 'M') { sendCmd('M'); cmdbox.value = ''; event.preventDefault(); }
-            else if (key === 's' || key === 'S') { sendCmd('S'); cmdbox.value = ''; event.preventDefault(); }
-        });
-
-        document.addEventListener('click', () => { cmdbox.focus(); });
-        sendCmd(''); // 初始化呼叫
+        document.addEventListener('click', () => cmdbox.focus());
+        sendCmd('');
     </script>
 </body>
 </html>
