@@ -10,12 +10,6 @@ class BaccaratPro:
         self.input_mode = 'TWO_STAGE'
         self.bet_strategy = 'CONSERVATIVE' 
         
-        self.math_streak = 0 
-        self.road_streaks = {'大眼仔路': 0, '小路趨勢': 0, '蟑螂路': 0} # 這裡沒有空白
-        
-        self.last_math_pred = None
-        self.last_road_preds = {}
-
         self.reset_game()
 
     def reset_game(self):
@@ -26,14 +20,24 @@ class BaccaratPro:
         self.history = []     
         self.raw_road = []    
         self.big_road = []    
+        
         self.session_streak = 0 
+        self.session_wl = {'W': 0, 'L': 0}
+        
+        self.math_streak = 0
+        self.math_wl = {'W': 0, 'L': 0}
+        
+        self.road_streaks = {'大眼仔路': 0, '小路趨勢': 0, '蟑螂路': 0}
+        self.road_wl = {'大眼仔路': {'W': 0, 'L': 0}, '小路趨勢': {'W': 0, 'L': 0}, '蟑螂路': {'W': 0, 'L': 0}}
+        
         self.current_bet_target = None
+        self.last_math_pred = None
+        self.last_road_preds = {}
+        
         self.history_log = [] 
         self.pending_stage = False
         self.pending_vals = []
         self.pending_text = ""
-        self.math_streak = 0
-        self.road_streaks = {'大眼仔路': 0, '小路趨勢': 0, '蟑螂路': 0}
 
     def _add_to_big_road(self, res):
         if res not in ['B', 'P']: return
@@ -62,26 +66,65 @@ class BaccaratPro:
         if R > 0: return len(temp_br[C-k]) >= R
         else: return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
 
-    def _update_streaks(self, res):
+    def _update_streaks_and_wl(self, res):
         if res == 'T': return 
+        
         if self.current_bet_target:
             if self.current_bet_target == res:
                 self.session_streak = self.session_streak + 1 if self.session_streak >= 0 else 1
+                self.session_wl['W'] += 1
             else:
                 self.session_streak = self.session_streak - 1 if self.session_streak <= 0 else -1
+                self.session_wl['L'] += 1
         
         if self.last_math_pred:
             if self.last_math_pred == res:
                 self.math_streak = self.math_streak + 1 if self.math_streak >= 0 else 1
+                self.math_wl['W'] += 1
             else:
                 self.math_streak = self.math_streak - 1 if self.math_streak <= 0 else -1
+                self.math_wl['L'] += 1
 
         for r_name, r_pred in self.last_road_preds.items():
             if r_pred:
                 if r_pred == res:
                     self.road_streaks[r_name] = self.road_streaks[r_name] + 1 if self.road_streaks[r_name] >= 0 else 1
+                    self.road_wl[r_name]['W'] += 1
                 else:
                     self.road_streaks[r_name] = self.road_streaks[r_name] - 1 if self.road_streaks[r_name] <= 0 else -1
+                    self.road_wl[r_name]['L'] += 1
+
+    def _pack_state(self):
+        return {
+            's_st': self.session_streak, 'm_st': self.math_streak, 'r_st': self.road_streaks.copy(),
+            's_wl': self.session_wl.copy(), 'm_wl': self.math_wl.copy(), 
+            'r_wl': {k: v.copy() for k, v in self.road_wl.items()}
+        }
+
+    def _unpack_state(self, state):
+        self.session_streak, self.math_streak = state['s_st'], state['m_st']
+        self.road_streaks, self.session_wl = state['r_st'], state['s_wl']
+        self.math_wl, self.road_wl = state['m_wl'], state['r_wl']
+
+    def _apply_cards_to_game(self, p_cards, b_cards, used_cards):
+        valid_cards_str = "".join(map(str, used_cards))
+        final_p, final_b = sum(p_cards) % 10, sum(b_cards) % 10
+        res = 'P' if final_p > final_b else 'B' if final_b > final_p else 'T'
+        
+        self._update_streaks_and_wl(res) 
+                
+        backup_counts = self.counts.copy()
+        for val in used_cards:
+            if self.counts[val] > 0: self.counts[val] -= 1; self.total_cards -= 1
+                
+        self.history.append(('EXACT', valid_cards_str, res, backup_counts, self._pack_state()))
+        self.raw_road.append(res); self._add_to_big_road(res)
+        
+        p_str, b_str = "+".join(map(str, p_cards)), "+".join(map(str, b_cards))
+        self.history_log.insert(0, f"局數 {self.round_num}: 閒({p_str}={final_p}) 莊({b_str}={final_b}) -> {'莊贏' if res=='B' else '閒贏' if res=='P' else '和局'}")
+        self.history_log = self.history_log[:5]
+        self.round_num += 1
+        return True
 
     def _finalize_exact_cards(self, vals):
         p_cards, b_cards = [vals[0], vals[1]], [vals[2], vals[3]]
@@ -117,26 +160,6 @@ class BaccaratPro:
         else: return False
         return self._apply_cards_to_game(p_cards, b_cards, vals)
 
-    def _apply_cards_to_game(self, p_cards, b_cards, used_cards):
-        valid_cards_str = "".join(map(str, used_cards))
-        final_p, final_b = sum(p_cards) % 10, sum(b_cards) % 10
-        res = 'P' if final_p > final_b else 'B' if final_b > final_p else 'T'
-        
-        self._update_streaks(res) 
-                
-        backup_counts = self.counts.copy()
-        for val in used_cards:
-            if self.counts[val] > 0: self.counts[val] -= 1; self.total_cards -= 1
-                
-        self.history.append(('EXACT', valid_cards_str, res, backup_counts, self.session_streak, self.math_streak, self.road_streaks.copy()))
-        self.raw_road.append(res); self._add_to_big_road(res)
-        
-        p_str, b_str = "+".join(map(str, p_cards)), "+".join(map(str, b_cards))
-        self.history_log.insert(0, f"局數 {self.round_num}: 閒({p_str}={final_p}) 莊({b_str}={final_b}) -> {'莊贏' if res=='B' else '閒贏' if res=='P' else '和局'}")
-        self.history_log = self.history_log[:5]
-        self.round_num += 1
-        return True
-
     def process_exact_cards(self, cards_str):
         vals = [int(d) for d in cards_str]
         if self.pending_stage:
@@ -150,7 +173,7 @@ class BaccaratPro:
             b_draw = b_score <= 5 if not p_draw else True
             if p_draw or b_draw:
                 self.pending_stage, self.pending_vals = True, vals
-                self.pending_text = f"⏳ 閒({p_score}點) 莊({b_score}點) ➔ 等待輸入補牌"
+                self.pending_text = f"⏳ 閒({p_score}點) 莊({b_score}點) ➔ 等待補牌"
                 return "PENDING"
             else: return self._finalize_exact_cards(vals)
         elif len(vals) > 4: return self._finalize_exact_cards(vals)
@@ -158,8 +181,8 @@ class BaccaratPro:
 
     def process_blind_shortcut(self, cmd):
         res = cmd.upper()
-        self._update_streaks(res)
-        self.history.append(('BLIND', res, res, self.counts.copy(), self.session_streak, self.math_streak, self.road_streaks.copy()))
+        self._update_streaks_and_wl(res)
+        self.history.append(('BLIND', res, res, self.counts.copy(), self._pack_state()))
         self.raw_road.append(res); self._add_to_big_road(res)
         self.history_log.insert(0, f"快捷鍵 [{res}] -> 局數 {self.round_num} 結算")
         self.history_log = self.history_log[:5]
@@ -172,7 +195,8 @@ class BaccaratPro:
             return True
         if not self.history: return False
         h = self.history.pop()
-        self.counts, self.session_streak, self.math_streak, self.road_streaks = h[3], h[4], h[5], h[6]
+        self.counts = h[3]
+        self._unpack_state(h[4]) 
         self.raw_road.pop(); self.big_road = []
         for r in self.raw_road: self._add_to_big_road(r)
         if self.history_log: self.history_log.pop(0)
@@ -203,6 +227,21 @@ def handle_command():
         if game.input_mode == 'DIRECT': game.process_direct_cards(cmd)
         else: game.process_exact_cards(cmd) if not game.pending_stage else game.process_exact_cards(cmd)
 
+    # 🟢 1. 提前計算下三路預測，找出多數票 (路單共振方向)
+    game.last_road_preds = {} 
+    roads_cfg = {'大眼仔路': 1, '小路趨勢': 2, '蟑螂路': 3} 
+    v_b = v_p = 0
+    for name, k in roads_cfg.items():
+        b_red = game._simulate_derived_road(game.big_road, k, 'B')
+        p_red = game._simulate_derived_road(game.big_road, k, 'P')
+        pred = 'B' if b_red is True else 'P' if p_red is True else None
+        game.last_road_preds[name] = pred
+        if pred == 'B': v_b += 1
+        elif pred == 'P': v_p += 1
+        
+    road_target = 'B' if v_b > v_p else 'P' if v_p > v_b else None
+
+    # 數學 EOR 運算
     eor_shift_total = 0
     if game.total_cards > 0:
         for card, eor_val in game.EOR_B.items():
@@ -213,58 +252,62 @@ def handle_command():
     true_count_shift = eor_shift_total / remaining_decks
 
     game.last_math_pred = 'B' if true_count_shift > 0 else 'P' if true_count_shift < 0 else None
-
     b_pct, p_pct = 50.68 + true_count_shift, 49.32 - true_count_shift
     
-    if game.bet_strategy == 'HYPER':
-        threshold = 50.001 
-    elif game.bet_strategy == 'AGGRESSIVE':
-        threshold = 51.5 if remaining_decks > 2 else 50.8
-    else:
-        threshold = 55.0 if remaining_decks > 4 else 53.0
+    if game.bet_strategy == 'HYPER': threshold = 50.001 
+    elif game.bet_strategy == 'AGGRESSIVE': threshold = 51.5 if remaining_decks > 2 else 50.8
+    else: threshold = 55.0 if remaining_decks > 4 else 53.0
         
+    # 🟢 2. 優化B: 數學與路單的「共振過濾」核心機制
     game.current_bet_target = None
     advice = "⚪ 局勢膠著，建議【觀望】"
     units = 0
     
-    if b_pct >= threshold:
-        game.current_bet_target = 'B'; advice = f"🔥 系統推【莊】"; units = game.calculate_kelly_units(b_pct, True)
-    elif p_pct >= threshold:
-        game.current_bet_target = 'P'; advice = f"🔥 系統推【閒】"; units = game.calculate_kelly_units(p_pct, False)
+    math_target = 'B' if b_pct >= threshold else 'P' if p_pct >= threshold else None
 
-    def fmt_st(st):
-        if st > 0: return f" [🔥連勝:{st}]"
-        if st < 0: return f" [🧊連敗:{abs(st)}]"
-        return " [---]"
+    if game.pending_stage:
+        advice = game.pending_text
+    elif math_target:
+        # 共振檢定：數學推的方向，與下三路多數票是否一致
+        if math_target == road_target: 
+            game.current_bet_target = math_target
+            advice = f"🔥 共振確認！強推【{'莊' if math_target=='B' else '閒'}】"
+            units = game.calculate_kelly_units(b_pct if math_target=='B' else p_pct, math_target=='B')
+        else:
+            # 衝突觸發：啟動觀望保護機制
+            r_name = '莊' if road_target == 'B' else '閒' if road_target == 'P' else '無'
+            m_name = '莊' if math_target == 'B' else '閒'
+            advice = f"🛑 訊號衝突 (數學推{m_name} vs 路單推{r_name})，強制【觀望】"
+
+    def fmt_st_wl(st, wl):
+        w, l = wl['W'], wl['L']
+        total = w + l
+        rate = int((w / total) * 100) if total > 0 else 0
+        icon = f"🔥{st}連勝" if st > 0 else f"🧊{abs(st)}連敗" if st < 0 else "---"
+        if total == 0: return f" [{icon}]"
+        return f" [{icon} | {w}勝-{l}敗 ({rate}%)]"
 
     lines = []
     lines.append("=========================================================")
     lines.append(f"【 第 {game.round_num} 局 】 | 🛡️策略:{'極進取' if game.bet_strategy=='HYPER' else '積極' if game.bet_strategy=='AGGRESSIVE' else '保守'} | ⌨️模式:{'直錄' if game.input_mode=='DIRECT' else '兩段'}")
     lines.append("---------------------------------------------------------")
-    lines.append(f"🎯 系統策略: {advice} ({units} 單位){fmt_st(game.session_streak)}")
+    lines.append(f"🎯 系統策略: {advice} ({units} 單位){fmt_st_wl(game.session_streak, game.session_wl)}")
     lines.append("---------------------------------------------------------")
     
-    lines.append(f"📊 [牌庫優勢分析]{fmt_st(game.math_streak)}")
+    lines.append(f"📊 [牌庫優勢分析]{fmt_st_wl(game.math_streak, game.math_wl)}")
     lines.append(f"   機率偏移: 莊 {true_count_shift:+.3f}% | 閒 {-true_count_shift:+.3f}%")
     lines.append(f"   💡 數學訊號: {'🔴 莊' if true_count_shift>0 else '🔵 閒' if true_count_shift<0 else '⚪ 平衡'}")
     lines.append("---------------------------------------------------------")
     
     lines.append("🛣️ [下三路順勢指引]")
-    game.last_road_preds = {} 
-    # 🟢 修正：移除全形空白，統一字典鍵名
-    roads_cfg = {'大眼仔路': 1, '小路趨勢': 2, '蟑螂路': 3} 
     for name, k in roads_cfg.items():
-        b_red = game._simulate_derived_road(game.big_road, k, 'B')
-        p_red = game._simulate_derived_road(game.big_road, k, 'P')
-        pred = 'B' if b_red is True else 'P' if p_red is True else None
-        game.last_road_preds[name] = pred
-        
+        pred = game.last_road_preds[name]
         v_str = f"👉 {'🔴 莊' if pred=='B' else '🔵 閒' if pred=='P' else '⏳ 等待'}"
         is_stable = game._simulate_derived_road(game.big_road[:-1], k, game.raw_road[-1]) if game.raw_road else True
         
-        # 🟢 為了排版美觀，顯示時補上空白，但尋找字典時使用正確名稱
         display_name = "蟑螂路　" if name == '蟑螂路' else name 
-        lines.append(f"   {display_name}：{v_str.ljust(10)} | 📝 路況: {'✅ 平穩' if is_stable else '⚠️ 波動'}{fmt_st(game.road_streaks[name])}")
+        wl_info = fmt_st_wl(game.road_streaks[name], game.road_wl[name])
+        lines.append(f"   {display_name}：{v_str.ljust(10)} | 📝 路況: {'✅ 平穩' if is_stable else '⚠️ 波動'}{wl_info}")
 
     lines.append("---------------------------------------------------------")
     last_act = game.pending_text if game.pending_stage else (game.history_log[0] if game.history_log else "等待指令...")
