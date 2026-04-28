@@ -260,17 +260,24 @@ def handle_command():
     game.last_math_pred = 'B' if true_count_shift > 0 else 'P' if true_count_shift < 0 else None
     b_pct, p_pct = 50.68 + true_count_shift, 49.32 - true_count_shift
     
-    if game.bet_strategy == 'HYPER': threshold = 50.001 
-    elif game.bet_strategy == 'AGGRESSIVE': threshold = 51.5 if remaining_decks > 2 else 50.8
-    else: threshold = 55.0 if remaining_decks > 4 else 53.0
-        
+    # 🟢 修正：改用「增幅 (Margin)」來做為門檻判斷，避免因基礎勝率不同而偏袒莊家
+    if game.bet_strategy == 'HYPER': margin = 0.001 
+    elif game.bet_strategy == 'AGGRESSIVE': margin = 0.8 if remaining_decks > 2 else 0.1
+    else: margin = 4.32 if remaining_decks > 4 else 2.32
     
-    # 🟢 修正：不要隨便清空當前的押注目標，使用暫存變數 new_target
+    b_threshold = 50.68 + margin
+    p_threshold = 49.32 + margin
+        
     new_target = None
     advice = "⚪ 局勢膠著，建議【觀望】"
     units = 0
     
-    math_target = 'B' if b_pct >= threshold else 'P' if p_pct >= threshold else None
+    # 🟢 修正：先確認偏移方向，再確認是否達到門檻
+    math_target = None
+    if true_count_shift > 0 and b_pct >= b_threshold:
+        math_target = 'B'
+    elif true_count_shift < 0 and p_pct >= p_threshold:
+        math_target = 'P'
 
     if game.pending_stage:
         advice = game.pending_text # 若在等待補牌，只更改顯示文字，不去動核心的目標記憶
