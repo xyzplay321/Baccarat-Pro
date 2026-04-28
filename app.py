@@ -63,23 +63,18 @@ class BaccaratPro:
         C = len(temp_br) - 1 
         if C <= k: return None 
         R = len(temp_br[C]) - 1 
-        
-        # 🟢 完美還原賭場「下三路」標準畫法
         if R > 0: 
             comp_len = len(temp_br[C-k])
-            if R < comp_len: 
-                return True       # 狀況 1：對齊的格子有珠子 -> 紅筆
-            elif R == comp_len: 
-                return False      # 狀況 2：齊腳後突出的第一粒 -> 藍筆
-            else: 
-                return True       # 狀況 3：突破後繼續連 (長連長紅) -> 紅筆 (舊版漏了這個)
+            if R < comp_len: return True       
+            elif R == comp_len: return False      
+            else: return True       
         else: 
-            # 換列時，比較前兩列的長度
             return len(temp_br[C-1]) == len(temp_br[C-(k+1)])
 
     def _update_streaks_and_wl(self, res):
         if res == 'T': return 
         
+        # 🟢 如果系統有給出押注目標，結算勝負
         if self.current_bet_target:
             if self.current_bet_target == res:
                 self.session_streak = self.session_streak + 1 if self.session_streak >= 0 else 1
@@ -109,13 +104,15 @@ class BaccaratPro:
         return {
             's_st': self.session_streak, 'm_st': self.math_streak, 'r_st': self.road_streaks.copy(),
             's_wl': self.session_wl.copy(), 'm_wl': self.math_wl.copy(), 
-            'r_wl': {k: v.copy() for k, v in self.road_wl.items()}
+            'r_wl': {k: v.copy() for k, v in self.road_wl.items()},
+            'c_tgt': self.current_bet_target # 備份目標
         }
 
     def _unpack_state(self, state):
         self.session_streak, self.math_streak = state['s_st'], state['m_st']
         self.road_streaks, self.session_wl = state['r_st'], state['s_wl']
         self.math_wl, self.road_wl = state['m_wl'], state['r_wl']
+        self.current_bet_target = state.get('c_tgt')
 
     def _apply_cards_to_game(self, p_cards, b_cards, used_cards):
         valid_cards_str = "".join(map(str, used_cards))
@@ -238,7 +235,6 @@ def handle_command():
         if game.input_mode == 'DIRECT': game.process_direct_cards(cmd)
         else: game.process_exact_cards(cmd) if not game.pending_stage else game.process_exact_cards(cmd)
 
-    # 🟢 1. 提前計算下三路預測，找出多數票 (路單共振方向)
     game.last_road_preds = {} 
     roads_cfg = {'大眼仔路': 1, '小路趨勢': 2, '蟑螂路': 3} 
     v_b = v_p = 0
@@ -252,7 +248,6 @@ def handle_command():
         
     road_target = 'B' if v_b > v_p else 'P' if v_p > v_b else None
 
-    # 數學 EOR 運算
     eor_shift_total = 0
     if game.total_cards > 0:
         for card, eor_val in game.EOR_B.items():
@@ -269,26 +264,29 @@ def handle_command():
     elif game.bet_strategy == 'AGGRESSIVE': threshold = 51.5 if remaining_decks > 2 else 50.8
     else: threshold = 55.0 if remaining_decks > 4 else 53.0
         
-    # 🟢 2. 優化B: 數學與路單的「共振過濾」核心機制
-    game.current_bet_target = None
+    
+    # 🟢 修正：不要隨便清空當前的押注目標，使用暫存變數 new_target
+    new_target = None
     advice = "⚪ 局勢膠著，建議【觀望】"
     units = 0
     
     math_target = 'B' if b_pct >= threshold else 'P' if p_pct >= threshold else None
 
     if game.pending_stage:
-        advice = game.pending_text
+        advice = game.pending_text # 若在等待補牌，只更改顯示文字，不去動核心的目標記憶
     elif math_target:
-        # 共振檢定：數學推的方向，與下三路多數票是否一致
         if math_target == road_target: 
-            game.current_bet_target = math_target
+            new_target = math_target
             advice = f"🔥 共振確認！強推【{'莊' if math_target=='B' else '閒'}】"
             units = game.calculate_kelly_units(b_pct if math_target=='B' else p_pct, math_target=='B')
         else:
-            # 衝突觸發：啟動觀望保護機制
             r_name = '莊' if road_target == 'B' else '閒' if road_target == 'P' else '無'
             m_name = '莊' if math_target == 'B' else '閒'
             advice = f"🛑 訊號衝突 (數學推{m_name} vs 路單推{r_name})，強制【觀望】"
+
+    # 🟢 修正：只有在「非等待階段」時，才允許把算出來的新方向，寫入系統的記憶體中
+    if not game.pending_stage:
+        game.current_bet_target = new_target
 
     def fmt_st_wl(st, wl):
         w, l = wl['W'], wl['L']
