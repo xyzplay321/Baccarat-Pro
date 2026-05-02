@@ -17,6 +17,13 @@ system = BaccaratProV3(
 )
 
 @app.route('/')
+def index():
+    """
+    首頁路由：當使用者訪問網站時，回傳 templates/index.html
+    """
+    # 確保你的專案資料夾內有一個 templates 資料夾，裡面有 index.html
+    return render_template('index.html')
+
 @app.route('/api/cmd', methods=['POST'])
 def handle_cmd():
     """
@@ -65,12 +72,6 @@ def handle_cmd():
         
     # 3. 處理未知的指令 (防呆)
     return jsonify({'terminal_text': f"\n❌ 尚未支援或無效的指令: {cmd}\n請輸入 B, P 或 T。"})
-def index():
-    """
-    首頁路由：當使用者訪問網站時，回傳 templates/index.html
-    """
-    # 確保你的專案資料夾內有一個 templates 資料夾，裡面有 index.html
-    return render_template('index.html')
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
@@ -82,7 +83,7 @@ def get_status():
 @app.route('/api/add_result', methods=['POST'])
 def add_result():
     """
-    API 路由：接收前端傳來的新遊戲結果，並回傳分析與下注建議
+    API 路由：接收前端傳來的新遊戲結果，並回傳分析���下注建議
     """
     data = request.json
     result = data.get('result')
