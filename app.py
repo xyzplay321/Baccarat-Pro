@@ -17,6 +17,54 @@ system = BaccaratProV3(
 )
 
 @app.route('/')
+@app.route('/api/cmd', methods=['POST'])
+def handle_cmd():
+    """
+    接收前端終端機傳來的指令，並回傳格式化的純文字
+    """
+    data = request.json
+    cmd = data.get('cmd', '').upper().strip()
+    
+    # 1. 處理網頁剛載入時的初始連線 (空字串)
+    if cmd == '':
+        welcome_text = (
+            "✅ 系統連線成功！Baccarat-Pro v3.0 已啟動。\n"
+            "================================================\n"
+            f"目前策略: {system.bet_strategy}\n"
+            f"EOR來源: {system.eor_source}\n"
+            "================================================\n"
+            "等待輸入中..."
+        )
+        return jsonify({'terminal_text': welcome_text})
+        
+    # 2. 處理新增遊戲結果 (B, P, T)
+    if cmd in ['B', 'P', 'T']:
+        analysis = system.add_game_result(cmd)
+        
+        # 將分析數據排版成前端需要的純文字 (terminal_text)
+        result_text = (
+            f"\n> 輸入結果: {cmd}\n"
+            "------------------------------------------------\n"
+            f"📍 莊家勝率: {analysis.get('banker_prob', 0):.2f}%\n"
+            f"📍 閒家勝率: {analysis.get('player_prob', 0):.2f}%\n"
+            f"📍 真實計數: {analysis.get('true_count', 0):.2f}\n"
+            f"📍 信心度:   {analysis.get('confidence', 'NONE')}\n"
+        )
+        
+        # 提取 Kelly 下注建議
+        if analysis.get('kelly_advice_banker'):
+            advice = analysis['kelly_advice_banker']
+            result_text += f"💡 建議 [莊]: {advice['recommendation']} (單位: {advice['bet_units']})\n"
+        elif analysis.get('kelly_advice_player'):
+            advice = analysis['kelly_advice_player']
+            result_text += f"💡 建議 [閒]: {advice['recommendation']} (單位: {advice['bet_units']})\n"
+        else:
+            result_text += "💡 建議: 觀望\n"
+            
+        return jsonify({'terminal_text': result_text})
+        
+    # 3. 處理未知的指令 (防呆)
+    return jsonify({'terminal_text': f"\n❌ 尚未支援或無效的指令: {cmd}\n請輸入 B, P 或 T。"})
 def index():
     """
     首頁路由：當使用者訪問網站時，回傳 templates/index.html
